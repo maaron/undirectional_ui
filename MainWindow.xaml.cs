@@ -201,9 +201,8 @@ namespace TodoElmStyle
                 new StackPanel()
                 {
                     Orientation = Orientation.Vertical
-                }.Containing(
-                    todos.TodoItems.Select(CreateTodoItem)
-                );
+                }
+                .Containing(todos.TodoItems.Select(CreateTodoItem));
 
             return bodyContainer = new ContentControl() { Content = bodyScroller };
         }
