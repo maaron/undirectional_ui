@@ -18,7 +18,6 @@ type Task = {
 type Todos = {
     Tasks: List<Task>;
     Filter: Boolean;
-    BodyScroll: ScrollViewer
 }
 
 type Msg = 
@@ -36,30 +35,72 @@ let update (msg: Msg) (model: Todos): Todos =
         let completeTask t = if t = task then { t with Completed = complete } else t
         { model with Tasks = List.map completeTask model.Tasks }
 
-let headerView dispatch model =
-    Grid() {
-        columns [
-            ColumnDefinition(Width = GridLength.Auto)
-            ColumnDefinition()
-        ]
-        children [
-            TextBlock(Text = "Add a todo") {
-                set [Grid.ColumnProperty, 0]
-            }
-            TextBox() {
-                set [Grid.ColumnProperty, 1]
+type TemplateBuilder(model) =
+    member x.Return(element: FrameworkElement) = x
 
-                onLoaded (fun t e -> t.Focus())
+    member x.Bind(a: 'a) = a
 
-                onKeyDown (fun t e -> 
-                    if e.Key = Input.Key.Enter then
-                        e.Handled <- true
-                        Add { Text = t.Text; Completed = false } |> dispatch)
-            }
-        ]
+type BoundControl = {
+    element: UIElement
+    update: Todos -> unit
+}
+
+type Template = Todos -> BoundControl
+
+type Dispatch = Msg -> unit
+type MakeTemplate = Dispatch -> Todos -> (Todos -> unit)
+type MakeElement = Dispatch -> (Todos -> unit)
+
+let bindModel element updateElement: BoundControl =
+    { element = element; update = fun model -> updateElement element model }
+
+let staticModel element: BoundControl =
+    { element = element; update = fun _ -> () }
+
+let headerTemplate (d: Dispatch): BoundControl =
+    let textBox = TextBox()
+    {
+        element = textBox
+        update = fun m -> textBox.Text <- m.ToString()
     }
 
-let taskView dispatch model =
+let headerTemplate2 dispatch =
+    bindModel (TextBox()) (fun tb todos -> tb.Text <- todos.ToString())
+
+let headerView dispatch =
+    staticModel (
+        Grid() {
+            columns [
+                ColumnDefinition(Width = GridLength.Auto)
+                ColumnDefinition()
+            ]
+            children [
+                TextBlock(Text = "Add a todo") {
+                    set [Grid.ColumnProperty, 0]
+                }
+                TextBox() {
+                    set [Grid.ColumnProperty, 1]
+
+                    onLoaded (fun t e -> t.Focus())
+
+                    onKeyDown (fun t e -> 
+                        if e.Key = Input.Key.Enter then
+                            e.Handled <- true
+                            Add { Text = t.Text; Completed = false } |> dispatch)
+                }
+            ]
+        }
+    )
+
+let taskView dispatch =
+    bindModel (
+        ItemsControl(
+            ItemsPanel = ItemsPanelTemplate(Template = StackPanel(Orientation = Orientation.Vertical)),
+            ItemTemplate = DataTemplate()
+        )
+    ) (fun e model -> ())
+
+    #if false
     StackPanel(Orientation = Orientation.Horizontal) {
         children [
             CheckBox(
@@ -100,6 +141,7 @@ let taskView dispatch model =
             }
         ]
     } :> UIElement
+    #endif
 
 let profile x =
     let watch = Stopwatch()
@@ -110,15 +152,11 @@ let profile x =
     r
 
 let bodyView dispatch model =
-    if not (model.BodyScroll.Parent = null) then
-        (model.BodyScroll.Parent :?> ContentControl).Content <- null
-    
-    model.BodyScroll.Content <-
-        StackPanel(Orientation = Orientation.Vertical) {
-            children (profile (fun _ -> List.map (taskView dispatch) model.Tasks))
-        }
-
-    ContentControl(Content = model.BodyScroll)
+    ScrollViewer(
+        Content = 
+            StackPanel(Orientation = Orientation.Vertical) {
+                children (List.map (taskView dispatch) model.Tasks)
+            })
 
 let footerView dispatch model =
     StackPanel(Orientation = Orientation.Horizontal) {
@@ -147,20 +185,18 @@ let view dispatch model =
 [<EntryPoint>]
 let main argv = 
     let mainWindow = Window()
+
     let mutable state: Todos = { 
-        Tasks = [for i in 1 .. 10000 -> { Text = i.ToString(); Completed = false }]; 
+        Tasks = [for i in 1 .. 10 -> { Text = i.ToString(); Completed = false }]; 
         Filter = true;
-        BodyScroll = ScrollViewer()
     }
     
     let rec dispatch msg =
-        state <- update msg state
-        use d = Dispatcher.CurrentDispatcher.DisableProcessing()
-        mainWindow.Content <- view dispatch state
+        state <- profile (fun () -> update msg state)
+        mainWindow.DataContext <- state
 
-    mainWindow.Content <- 
-        use d = Dispatcher.CurrentDispatcher.DisableProcessing()
-        view dispatch state
+    mainWindow.Content <- view dispatch state
+    mainWindow.DataContext <- state
     
     let application = Application()
     application.Run(mainWindow)
