@@ -40,7 +40,6 @@ namespace TodoElmStyle
             GridLength? Height = default(GridLength?), 
             double? MinHeight = null, 
             double? MaxHeight = null, 
-            double? Offset = null, 
             string SharedSizeGroup = null)
         {
             var row = new RowDefinition();
