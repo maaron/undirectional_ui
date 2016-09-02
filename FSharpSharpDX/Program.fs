@@ -16,7 +16,7 @@ open Rectangle
 open Arranged
 open Overlayed
 
-type MainForm<'e, 'm, 'c>(ui: Interface<'e, 'm, 'c>) =
+type MainForm<'e, 'm>(ui: Interface<'e, 'm>) =
     inherit Form()
 
     let factory = new Direct2D1.Factory(FactoryType.SingleThreaded, DebugLevel.Information)
@@ -96,7 +96,7 @@ type MainForm<'e, 'm, 'c>(ui: Interface<'e, 'm, 'c>) =
         if not (rt = null) then rt.Dispose()
         factory.Dispose()
 
-let makeForm (ui: Interface<'e, 'm, 'c>) = new MainForm<'e, 'm, 'c>(ui)
+let makeForm (ui: Interface<'e, 'm>) = new MainForm<'e, 'm>(ui)
 
 [<EntryPoint>]
 let main argv = 

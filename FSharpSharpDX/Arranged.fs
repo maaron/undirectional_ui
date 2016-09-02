@@ -47,7 +47,7 @@ let padding thickness (outer: Size2F) (inner: Size2F) =
     let size = (Size2F(inner.Width + thickness * 2.0f, inner.Height + thickness * 2.0f))
     translateCrop (Vector2(thickness, thickness)) size inner
 
-let arranged (arrange: Arrange) (ui: Interface<'e, 'm, 'c>): Interface<'e, ArrangedModel<'m>, 'c> = 
+let arranged (arrange: Arrange) (ui: Interface<'e, 'm>): Interface<'e, ArrangedModel<'m>> = 
   { init = 
         let (sub, cmd) = ui.init
         let model =

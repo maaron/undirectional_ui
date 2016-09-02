@@ -57,14 +57,14 @@ type InterfaceEvent<'e> =
     | Content of ContentEvent
     | Event of 'e
 
-//type Interface<'e, 'm, 'c> = Component<InterfaceEvent<'e>, ContentModel<'m>>
-type Interface<'e, 'm, 'c> = {
-    init: ContentModel<'m> * Cmd<'c>
+//type Interface<'e, 'm> = Component<InterfaceEvent<'e>, ContentModel<'m>>
+type Interface<'e, 'm> = {
+    init: ContentModel<'m> * Cmd<'e>
     view: ContentModel<'m> -> Render
-    update: InterfaceEvent<'e> -> ContentModel<'m> -> ContentModel<'m> * Cmd<'c>
+    update: InterfaceEvent<'e> -> ContentModel<'m> -> ContentModel<'m> * Cmd<'e>
 }
 
-type InterfaceUpdate<'e, 'm, 'c> = InterfaceEvent<'e> -> ContentModel<'m> -> ContentModel<'m> * Cmd<'c>
+type InterfaceUpdate<'e, 'm> = InterfaceEvent<'e> -> ContentModel<'m> -> ContentModel<'m> * Cmd<'e>
 
 type ResourceModel<'p, 'r> = {
     properties: 'p
@@ -77,13 +77,13 @@ let initialize ui events =
         (m2, Cmd.batch [cmd; cmd2])
     { ui with init = events |> (ui.init |> List.fold folder)}
 
-let apply (init: ContentModel<'m> * Cmd<'c>) (ui: Interface<'e, 'm, 'c>) (events: 'e list) =
+let apply (init: ContentModel<'m> * Cmd<'e>) (ui: Interface<'e, 'm>) (events: 'e list) =
     let folder (m, cmd) e =
         let (m2, cmd2) = ui.update (Event e) m
         (m2, Cmd.batch [cmd; cmd2])
     events |> (init |> List.fold folder)
 
-let augmentModel (init: 'm2) (update: InterfaceEvent<'e> -> ('m2 * ContentModel<'m>) -> ('m2 * ContentModel<'m>)) (ui: Interface<'e, 'm, 'c>): Interface<'e, 'm2 * 'm, 'c> =
+let augmentModel (init: 'm2) (update: InterfaceEvent<'e> -> ('m2 * ContentModel<'m>) -> ('m2 * ContentModel<'m>)) (ui: Interface<'e, 'm>): Interface<'e, 'm2 * 'm> =
   { init = 
         let (sub, cmd) = ui.init
         let model = { bounds = sub.bounds; content = (init, sub.content) }
@@ -99,7 +99,7 @@ let augmentModel (init: 'm2) (update: InterfaceEvent<'e> -> ('m2 * ContentModel<
             ({ bounds = cmUpdate.bounds; content = (mAugUpdate, cmUpdate.content) }, cmd)
   }
 
-let augment (init: 'm2) (update: InterfaceUpdate<'e, 'm, 'c> -> InterfaceEvent<'e> -> ('m2 * ContentModel<'m>) -> ('m2 * ContentModel<'m>) * Cmd<'c>) (ui: Interface<'e, 'm, 'c>): Interface<'e, 'm2 * 'm, 'c> =
+let augment (init: 'm2) (update: InterfaceUpdate<'e, 'm> -> InterfaceEvent<'e> -> ('m2 * ContentModel<'m>) -> ('m2 * ContentModel<'m>) * Cmd<'e>) (ui: Interface<'e, 'm>): Interface<'e, 'm2 * 'm> =
   { init = 
         let (sub, cmd) = ui.init
         let model = { bounds = sub.bounds; content = (init, sub.content) }

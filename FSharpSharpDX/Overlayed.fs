@@ -14,7 +14,7 @@ type Event<'b, 't> =
   | Bottom of 'b
   | Top of 't
 
-let overlayed (bottom: Interface<'e1, 'm1, 'c>) (top: Interface<'e2, 'm2, 'c>): Interface<Event<'e1, 'e2>, ContentModel<'m1> * ContentModel<'m2>, 'c> =
+let overlayed (bottom: Interface<'e1, 'm1>) (top: Interface<'e2, 'm2>): Interface<Event<'e1, 'e2>, ContentModel<'m1> * ContentModel<'m2>> =
   { init = 
         let (m1, cmd1) = bottom.init
         let (m2, cmd2) = top.init

@@ -42,7 +42,7 @@ type RectangleStrokeModel = {
       resource.Dispose()
       x.create resource.target
 
-let rectangleStrokeDefault: Ui.Interface<Event, ResourceModel<RectangleStrokeModel, RectangleStrokeResource>, unit> =
+let rectangleStrokeDefault: Ui.Interface<Event, ResourceModel<RectangleStrokeModel, RectangleStrokeResource>> =
   { init =
         let model = 
           { bounds = Size2F.Zero

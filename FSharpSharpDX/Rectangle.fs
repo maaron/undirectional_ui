@@ -37,7 +37,7 @@ type RectangleModel = {
       resource.Dispose()
       x.create resource.target
 
-let rectangleDefault: Interface<Event, ResourceModel<RectangleModel, RectangleResource>, unit> =
+let rectangleDefault: Interface<Event, ResourceModel<RectangleModel, RectangleResource>> =
   { init =
         let model = 
           { bounds = Size2F.Zero
