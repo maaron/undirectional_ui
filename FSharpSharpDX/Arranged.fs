@@ -101,6 +101,18 @@ let arranged (arrange: Arrange) (ui: Interface<'e, 'm>): Interface<'e, ArrangedM
                 updateArrangement m (ui.update e m.content.arranged)
   }
 
+let onsize (update: Size2F -> InterfaceModify<'e, 'm>) ui =
+  { init = ui.init
+    
+    view = ui.view
+
+    update =
+        fun event model ->
+            match event with
+            | Content (Bounds s) -> update s ui.update model
+            | _ -> ui.update event model
+  }
+
 let translated vec = arranged (translateCrop vec)
 
 let centered ui = arranged center ui

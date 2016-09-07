@@ -10,6 +10,9 @@ open SharpDX.Windows
 
 open Ui
 
+let maxSize (s1: Size2F) (s2: Size2F) =
+    Size2F(max s1.Width s2.Width, max s1.Height s2.Height)
+
 type Event<'b, 't> =
   | Bottom of 'b
   | Top of 't
@@ -19,7 +22,7 @@ let overlayed (bottom: Interface<'e1, 'm1>) (top: Interface<'e2, 'm2>): Interfac
         let (m1, cmd1) = bottom.init
         let (m2, cmd2) = top.init
         let model =
-          { bounds = Size2F.Zero 
+          { bounds = Size2F(max m1.bounds.Width m2.bounds.Width, max m1.bounds.Height m2.bounds.Height)
             content = (m1, m2)
           }
         (model, Cmd.batch [Cmd.map Bottom cmd1; Cmd.map Top cmd2])
@@ -32,27 +35,30 @@ let overlayed (bottom: Interface<'e1, 'm1>) (top: Interface<'e2, 'm2>): Interfac
 
     update = 
         fun e m ->
-            match e with
-            | Event (Bottom e1) -> 
-                let (m1, c1) = bottom.update (Event e1) (fst m.content)
-                ({ m with content = (m1, snd m.content) }, Cmd.map Bottom c1)
+            let (content, cmds) = 
+                match e with
+                | Event (Bottom e1) -> 
+                    let (m1, c1) = bottom.update (Event e1) (fst m.content)
+                    ((m1, snd m.content), Cmd.map Bottom c1)
 
-            | Event (Top e2) -> 
-                let (msub, csub) = top.update (Event e2) (snd m.content)
-                ({ m with content = (fst m.content, msub) }, Cmd.map Top csub)
+                | Event (Top e2) -> 
+                    let (msub, csub) = top.update (Event e2) (snd m.content)
+                    ((fst m.content, msub), Cmd.map Top csub)
 
-            | Input i ->
-                let (m1, c1) = bottom.update (Input i) (fst m.content)
-                let (m2, c2) = top.update (Input i) (snd m.content)
-                ({ m with content = (m1, m2)}, Cmd.batch [Cmd.map Bottom c1; Cmd.map Top c2])
+                | Input i ->
+                    let (m1, c1) = bottom.update (Input i) (fst m.content)
+                    let (m2, c2) = top.update (Input i) (snd m.content)
+                    ((m1, m2), Cmd.batch [Cmd.map Bottom c1; Cmd.map Top c2])
 
-            | Content (Bounds b) ->
-                let (m1, c1) = bottom.update (Content (Bounds b)) (fst m.content)
-                let (m2, c2) = top.update (Content (Bounds b)) (snd m.content)
-                ({ bounds = b; content = (m1, m2)}, Cmd.batch [Cmd.map Bottom c1; Cmd.map Top c2])
+                | Content (Bounds b) ->
+                    let (m1, c1) = bottom.update (Content (Bounds b)) (fst m.content)
+                    let (m2, c2) = top.update (Content (Bounds b)) (snd m.content)
+                    ((m1, m2), Cmd.batch [Cmd.map Bottom c1; Cmd.map Top c2])
 
-            | Content c ->
-                let (m1, c1) = bottom.update (Content c) (fst m.content)
-                let (m2, c2) = top.update (Content c) (snd m.content)
-                ({ m with content = (m1, m2)}, Cmd.batch [Cmd.map Bottom c1; Cmd.map Top c2])
+                | Content c ->
+                    let (m1, c1) = bottom.update (Content c) (fst m.content)
+                    let (m2, c2) = top.update (Content c) (snd m.content)
+                    ((m1, m2), Cmd.batch [Cmd.map Bottom c1; Cmd.map Top c2])
+            
+            ({ bounds = maxSize (fst content).bounds (snd content).bounds; content = content }, cmds)
   }

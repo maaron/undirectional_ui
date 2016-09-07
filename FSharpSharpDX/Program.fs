@@ -108,10 +108,10 @@ let main argv =
         rectangle 
           [ Fill (Solid Color.Green)
             Size (Size2F(200.0f, 200.0f)) ]
-     |> padded 10.0f
      |> onmouseover 
           (mapBool (sendEvents [Fill (Solid Color.Blue)])
                    (sendEvents [Fill (Solid Color.Green)]))
+     |> padded 10.0f
 
     let innerBox =
         rectangle 

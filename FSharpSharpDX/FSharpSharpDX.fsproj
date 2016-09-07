@@ -70,7 +70,7 @@
     <Compile Include="Overlayed.fs" />
     <Compile Include="Augmented.fs" />
     <Compile Include="Mouseover.fs" />
-    <Compile Include="Border.fs" />
+    <Compile Include="Bordered.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
