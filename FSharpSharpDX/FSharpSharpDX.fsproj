@@ -61,10 +61,14 @@
     <None Include="NonEmbeddedTypes.fsx" />
     <Compile Include="Ui.fs" />
     <Compile Include="Brush.fs" />
+    <Compile Include="Stroke.fs" />
     <Compile Include="RectangleStroke.fs" />
     <Compile Include="Rectangle.fs" />
     <Compile Include="Arranged.fs" />
     <Compile Include="Overlayed.fs" />
+    <Compile Include="Augmented.fs" />
+    <Compile Include="Mouseover.fs" />
+    <Compile Include="Border.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

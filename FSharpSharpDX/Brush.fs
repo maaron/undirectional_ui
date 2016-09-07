@@ -8,6 +8,8 @@ open SharpDX.Direct3D
 open SharpDX.Mathematics
 open SharpDX.Mathematics.Interop
 
+open Ui
+
 type Resource =
     | Solid of SolidColorBrush
     | Linear of LinearGradientBrush * GradientStopCollection
@@ -25,41 +27,56 @@ with
     interface IDisposable with
         member x.Dispose() = x.Dispose()
 
-type LinearGradientModel = {
-    start: Vector2
+type LinearGradientModel = 
+  { start: Vector2
     stop: Vector2
     opacity: float32
     transform: Matrix3x2
     stops: GradientStop list
-} with
-    member x.create rt =
-        let linearBrushProperties = 
-            LinearGradientBrushProperties(
-                StartPoint = Vector2.op_Implicit(x.start), 
-                EndPoint = Vector2.op_Implicit(x.stop))
+  }
 
-        let brushProperties = 
-            Nullable<BrushProperties>(
-                BrushProperties(
-                    Transform = Matrix3x2.op_Implicit(x.transform),
-                    Opacity = x.opacity))
-        
-        let gradient = new GradientStopCollection(rt, List.toArray x.stops)
-
-        let brush = new LinearGradientBrush(rt, linearBrushProperties, brushProperties, gradient)
-
-        Resource.Linear (brush, gradient)
-
-type Model =
+type Event =
   | Solid of Color
   | Linear of LinearGradientModel
-  with
-    member x.create rt =
-        match x with
-        | Solid color -> Resource.Solid (new SolidColorBrush(rt, Color.op_Implicit(color)))
-        | Linear linear -> linear.create rt
 
-    member x.update rt (resource: Resource) =
-        resource.Dispose()
-        x.create rt
+type Model =
+  { properties: Event
+    resource: Resource option
+  }
 
+let init = 
+  { properties = Solid Color.Transparent
+    resource = None
+  }
+
+let release model =
+    model.resource |> Option.map (fun r -> r.Dispose()) |> ignore
+    { model with resource = None }
+
+let create model target =
+    let resource = 
+        match model.properties with
+        | Solid color -> Resource.Solid (new SolidColorBrush(target, Color.op_Implicit(color)))
+    
+        | Linear linear ->
+            let linearBrushProperties = 
+                LinearGradientBrushProperties(
+                    StartPoint = Vector2.op_Implicit(linear.start), 
+                    EndPoint = Vector2.op_Implicit(linear.stop))
+
+            let brushProperties = 
+                Nullable<BrushProperties>(
+                    BrushProperties(
+                        Transform = Matrix3x2.op_Implicit(linear.transform),
+                        Opacity = linear.opacity))
+        
+            let gradient = new GradientStopCollection(target, List.toArray linear.stops)
+
+            let brush = new LinearGradientBrush(target, linearBrushProperties, brushProperties, gradient)
+
+            Resource.Linear (brush, gradient)
+
+    { release model with resource = Some resource }
+
+let update event model target =
+    create { model with properties = event } target

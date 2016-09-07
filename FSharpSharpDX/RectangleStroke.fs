@@ -13,7 +13,7 @@ open Brush
 
 type Event =
     | Size of Size2F
-    | Stroke of Brush.Model
+    | Brush of Brush.Model
     | StrokeWidth of float32
 
 type RectangleStrokeResource = 
@@ -27,11 +27,10 @@ type RectangleStrokeResource =
     interface IDisposable with
         member x.Dispose() = x.Dispose()
 
-type RectangleStrokeModel = {
+type StrokeModel = {
     stroke: Brush.Model
     strokeWidth: float32
     strokeStyle: StrokeStyle option
-    fill: Brush.Model option
 } with
     member x.create rt = 
       { target = rt
@@ -42,7 +41,7 @@ type RectangleStrokeModel = {
       resource.Dispose()
       x.create resource.target
 
-let rectangleStrokeDefault: Ui.Interface<Event, ResourceModel<RectangleStrokeModel, RectangleStrokeResource>> =
+let rectangleStrokeDefault: Ui.Interface<Event, ResourceModel<StrokeModel, RectangleStrokeResource>> =
   { init =
         let model = 
           { bounds = Size2F.Zero
@@ -50,8 +49,7 @@ let rectangleStrokeDefault: Ui.Interface<Event, ResourceModel<RectangleStrokeMod
               { properties =
                   { stroke = Solid Color.Transparent
                     strokeWidth = 0.0f 
-                    strokeStyle = None
-                    fill = None }
+                    strokeStyle = None }
                 resource = None } }
         let cmd = Ui.Cmd.none
         (model, cmd)
@@ -75,7 +73,7 @@ let rectangleStrokeDefault: Ui.Interface<Event, ResourceModel<RectangleStrokeMod
             match e with
             | Event (Size s) -> ({ m with bounds = s }, Cmd.none)
 
-            | Event (Stroke stroke) ->
+            | Event (Brush stroke) ->
                 let properties = { m.content.properties with stroke = stroke }
                 let resource = m.content.resource |> Option.map properties.update
                 ({ m with content = { m.content with properties = properties; resource = resource } }, Cmd.none)

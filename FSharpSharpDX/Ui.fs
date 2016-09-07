@@ -66,7 +66,9 @@ type Interface<'e, 'm> = {
 
 type InterfaceUpdate<'e, 'm> = InterfaceEvent<'e> -> ContentModel<'m> -> ContentModel<'m> * Cmd<'e>
 
-type ResourceModel<'p, 'r> = {
+type InterfaceModify<'e, 'm> = InterfaceUpdate<'e, 'm> -> ContentModel<'m> -> ContentModel<'m> * Cmd<'e>
+
+type ResourceModel<'p, 'r when 'r :> IDisposable> = {
     properties: 'p
     resource: 'r option
 }
@@ -76,6 +78,12 @@ let initialize ui events =
         let (m2, cmd2) = ui.update (Event e) m
         (m2, Cmd.batch [cmd; cmd2])
     { ui with init = events |> (ui.init |> List.fold folder)}
+
+let sendEvents events update init =
+    let folder (m, cmd) e =
+        let (m2, cmd2) = update (Event e) m
+        (m2, Cmd.batch [cmd; cmd2])
+    events |> ((init, Cmd.none) |> List.fold folder)
 
 let apply (init: ContentModel<'m> * Cmd<'e>) (ui: Interface<'e, 'm>) (events: 'e list) =
     let folder (m, cmd) e =
@@ -114,48 +122,33 @@ let augment (init: 'm2) (update: InterfaceUpdate<'e, 'm> -> InterfaceEvent<'e> -
             ({ bounds = contentnew.bounds; content = (bnew, contentnew.content) }, cmd)
   }
 
-let mouseovered ui =
-    let aug e (b, m) =
-        match e with
-        | Input (MouseMove mouse) -> 
-            let isOver = mouse.X >= 0.0f && mouse.X <= m.bounds.Width 
-                        && mouse.Y >= 0.0f && mouse.Y <= m.bounds.Height
-            (isOver, m)
-            
-        | Input MouseLeave -> (false, m)
-
-        | _ -> (b, m)
-
-    augmentModel false aug ui
-
-let onchange (update: ContentModel<'m> -> ContentModel<'m> -> ContentModel<'m> * Cmd<'e>) ui =
+let oncontentchange (update: ContentModel<'m> -> ContentModel<'m> -> ContentModel<'m> * Cmd<'e>) ui =
     let update e m =
         let (updated, cmd) = ui.update e m
         let (updated2, cmd2) = update m updated
         (updated2, Cmd.batch [cmd; cmd2])
     { ui with update = update }
 
-// Should find a way to take the mouseover state back out???
-let onmouseover2 enter leave ui =
-    let withMouse = mouseovered ui
-    withMouse |> onchange 
-      ( fun prev next -> 
-            let isOver = fst next.content
-            let wasOver = fst prev.content
-            let next2 = 
-                if wasOver = isOver then 
-                    (next, Cmd.none)
-                else
-                    apply (next, Cmd.none) withMouse (if isOver then enter else leave)
-            next2
-      )
+let thenUpdate (m, cmd) update =
+    let (m2, cmd2) = update m
+    (m, Cmd.batch [cmd; cmd2])
+
+let onchange (what: 'm -> 'r) getUpdater ui =
+    let update e m =
+        let prev = what m.content
+        let (updated, cmd) = ui.update e m
+        let next = what m.content
+        if not (prev = next) then thenUpdate (updated, cmd) (getUpdater next) else (updated, cmd)
+    { ui with update = update }
+
+let falseToTrue prev next = next && not prev
 
 // This is an example of a combinator that generates new events that only travel forward within 
 // the local context.  This is in contrast to commands, which indirectly cause events to arrive 
 // at the application root.  This is useful in cases where we don't need to be aware of the event
 // outside of the context of the combinator, i.e., combinators upstream from this one won't 
 // receive the event.
-let onmouseover handler =
+let onmouseoverOrig handler =
     augment false 
         (fun update e (b, m) -> 
             let updateMouseOver isOver =
@@ -180,4 +173,3 @@ let onmouseover handler =
                 let (updated, cmd) = update e m
                 ((b, updated), cmd)
         )
-
