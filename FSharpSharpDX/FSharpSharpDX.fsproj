@@ -60,7 +60,9 @@
     <Content Include="packages.config" />
     <None Include="NonEmbeddedTypes.fsx" />
     <Compile Include="Ui.fs" />
+    <Compile Include="Resource.fs" />
     <Compile Include="Brush.fs" />
+    <Compile Include="StrokeStyle.fs" />
     <Compile Include="Stroke.fs" />
     <Compile Include="RectangleStroke.fs" />
     <Compile Include="Rectangle.fs" />

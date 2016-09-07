@@ -9,23 +9,21 @@ open SharpDX.Mathematics
 open SharpDX.Mathematics.Interop
 
 open Ui
+open Resource
 
 type Resource =
-    | Solid of SolidColorBrush
-    | Linear of LinearGradientBrush * GradientStopCollection
-with
-    member x.brush = 
-        match x with
-        | Solid brush -> brush :> Brush
-        | Linear (brush, grad) -> brush :> Brush
-
+  | Solid of SolidColorBrush
+  | Linear of LinearGradientBrush * GradientStopCollection
+  with
     member x.Dispose() =
-            match x with
-            | Solid brush -> brush.Dispose()
-            | Linear (brush, grad) -> brush.Dispose(); grad.Dispose()
+        match x with
+        | Solid brush -> brush.Dispose()
+        | Linear (brush, grad) -> brush.Dispose(); grad.Dispose()
 
-    interface IDisposable with
-        member x.Dispose() = x.Dispose()
+let brush model =
+    match model with
+    | Solid brush -> brush :> Brush
+    | Linear (brush, grad) -> brush :> Brush
 
 type LinearGradientModel = 
   { start: Vector2
@@ -35,27 +33,23 @@ type LinearGradientModel =
     stops: GradientStop list
   }
 
-type Event =
+type Properties = 
   | Solid of Color
   | Linear of LinearGradientModel
 
-type Model =
-  { properties: Event
-    resource: Resource option
-  }
+type Event = Properties
 
-let init = 
-  { properties = Solid Color.Transparent
-    resource = None
-  }
+type Model = TargetBound<Properties, Resource>
 
-let release model =
-    model.resource |> Option.map (fun r -> r.Dispose()) |> ignore
-    { model with resource = None }
+let init: Model = (Solid Color.Transparent, Released)
+
+let release (model: Model) =
+    model |> Resource.map (fun r -> r.Dispose())
 
 let create model target =
+    let (props, state) = model
     let resource = 
-        match model.properties with
+        match props with
         | Solid color -> Resource.Solid (new SolidColorBrush(target, Color.op_Implicit(color)))
     
         | Linear linear ->
@@ -76,7 +70,10 @@ let create model target =
 
             Resource.Linear (brush, gradient)
 
-    { release model with resource = Some resource }
+    (fst (release model), Created (target, resource))
 
-let update event model target =
-    create { model with properties = event } target
+let update event model =
+    let (props, state) = model
+    match state with
+    | Created (target, resource) -> create (event, state) target
+    | Released -> (event, Released)

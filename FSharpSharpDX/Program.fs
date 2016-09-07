@@ -105,8 +105,8 @@ let main argv =
     let mapBool yes no b = if b then yes else no
     
     let box = 
-        rectangle [
-            Fill (Solid Color.Green)
+        rectangle 
+          [ Fill (Solid Color.Green)
             Size (Size2F(200.0f, 200.0f)) ]
      |> padded 10.0f
      |> onmouseover 
@@ -114,9 +114,9 @@ let main argv =
                    (sendEvents [Fill (Solid Color.Green)]))
 
     let innerBox =
-        rectangle [
-            Fill (Solid Color.Red)
-            Rectangle.Size (Size2F(60.0f, 130.0f)) ]
+        rectangle 
+          [ Fill (Solid Color.Red)
+            Size (Size2F(60.0f, 130.0f)) ]
      |> margined 20.0f
 
     let app = 
@@ -125,50 +125,6 @@ let main argv =
 
     let form = makeForm app
 
-    // Modern style D2D usage?
-    #if false
-    let d3device = new Direct3D11.Device(Direct3D.DriverType.Hardware,  Direct3D11.DeviceCreationFlags.BgraSupport ||| Direct3D11.DeviceCreationFlags.Debug) //not sure if or flags are working correctly
-    let defDevice = d3device.QueryInterface<Direct3D11.Device1>()
-    let dxgiDevice2 = defDevice.QueryInterface<DXGI.Device2>()
-    let dxgiAdapter = dxgiDevice2.Adapter
-    let dxgiFactory2 = dxgiAdapter.GetParent<DXGI.Factory2>()
-    let scDescription = ref (new DXGI.SwapChainDescription1(
-                                    Width = 0,
-                                    Height = 0,
-                                    Format = DXGI.Format.B8G8R8A8_UNorm,
-                                    Stereo = RawBool(false),
-                                    SampleDescription = new DXGI.SampleDescription(1,0),
-                                    Usage = DXGI.Usage.RenderTargetOutput,
-                                    BufferCount = 2,
-                                    Scaling = DXGI.Scaling.None,
-                                    SwapEffect = DXGI.SwapEffect.FlipSequential
-                                    ))
-
-    let swapChain = new DXGI.SwapChain1(dxgiFactory2, defDevice, form.Handle, scDescription, System.Nullable(), null)
-    let d2dDevice = new Direct2D1.Device(dxgiDevice2)
-    let d2dContext = new Direct2D1.DeviceContext(d2dDevice, Direct2D1.DeviceContextOptions.None)
-    let fac = new Direct2D1.Factory(FactoryType.SingleThreaded)
-    let dpi = fac.DesktopDpi
-    let bMProperties = new BitmapProperties1(new PixelFormat(DXGI.Format.B8G8R8A8_UNorm, AlphaMode.Premultiplied), dpi.Height, dpi.Width, BitmapOptions.CannotDraw ||| BitmapOptions.Target)
-    let bb = swapChain.GetBackBuffer<DXGI.Surface>(0)
-    let target = new Bitmap1(d2dContext,bb, bMProperties)
-    do  d2dContext.Target <- target
-    let brush = new SolidColorBrush(d2dContext, Color4.op_Implicit(Color4.White))
-    #endif
-
     Application.Run(form);
     
-    // Game-style render loop
-    #if false
-    do  RenderLoop.Run
-            (
-                form, 
-                fun () -> 
-                    d2dContext.BeginDraw()
-                    d2dContext.Clear(Nullable<RawColor4>(Color4.op_Implicit(Color4.Black)))
-                    d2dContext.FillEllipse(new Ellipse(RawVector2(300.0f,300.0f), 50.0f, 50.0f), brush)
-                    d2dContext.EndDraw()
-                    swapChain.Present(0,DXGI.PresentFlags.None)
-            )
-    #endif
     0

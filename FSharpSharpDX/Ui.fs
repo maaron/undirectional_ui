@@ -68,11 +68,6 @@ type InterfaceUpdate<'e, 'm> = InterfaceEvent<'e> -> ContentModel<'m> -> Content
 
 type InterfaceModify<'e, 'm> = InterfaceUpdate<'e, 'm> -> ContentModel<'m> -> ContentModel<'m> * Cmd<'e>
 
-type ResourceModel<'p, 'r when 'r :> IDisposable> = {
-    properties: 'p
-    resource: 'r option
-}
-
 let initialize ui events =
     let folder (m, cmd) e =
         let (m2, cmd2) = ui.update (Event e) m

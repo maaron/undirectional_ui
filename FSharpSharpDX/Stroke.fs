@@ -10,37 +10,12 @@ open SharpDX.Windows
 
 open Ui
 open Brush
+open StrokeStyle
+open Resource
 
-module StrokeStyle =
+type Resource = Brush.Model * StrokeStyle.Model option
 
-    type Event =
-      { properties: StrokeStyleProperties
-        dashes: float32 list
-      }
-
-    type Model =
-      { properties: Event
-        resource: StrokeStyle option
-      }
-
-    let init = 
-      { properties = 
-          { properties = new StrokeStyleProperties()
-            dashes = [] }
-        resource = None
-      }
-
-    let release model =
-        model.resource |> Option.map (fun r -> r.Dispose()) |> ignore
-        { model with resource = None }
-
-    let create (model: Model) (target: RenderTarget) =
-        { release model with resource = Some (new StrokeStyle(target.Factory, model.properties.properties, List.toArray model.properties.dashes)) }
-
-    let update event model target =
-        create { model with properties = event } target
-
-type Model = 
+type Model =
   { brush: Brush.Model
     width: float32
     style: StrokeStyle.Model option
@@ -58,20 +33,24 @@ let init =
   }
 
 let release model =
-    { model with brush = release model.brush }
+  { model with 
+        brush = Brush.release model.brush
+        style = model.style |> Option.map (fun s -> StrokeStyle.release s) }
 
 let create model target =
-    { model with brush = Brush.create model.brush target }
+  { model with 
+        brush = Brush.create model.brush target 
+        style = model.style |> Option.map (fun s -> StrokeStyle.create s target.Factory) }
 
-let update event model target =
+let update event model =
     match event with
-    | Brush b -> { model with brush = Brush.update b model.brush target }
+    | Brush b -> { model with brush = Brush.update b model.brush }
     | Width w -> { model with width = w }
     | Style s -> 
         let updated =
           match (model.style, s) with
           | (None, None) -> None
-          | (Some s, None) -> Some (StrokeStyle.release s)
-          | (None, Some e) -> Some (StrokeStyle.update e StrokeStyle.init target)
-          | (Some s, Some e) -> Some (StrokeStyle.update e s target)
+          | (Some s, None) -> StrokeStyle.release s |> ignore; None
+          | (None, Some e) -> Some (StrokeStyle.update e StrokeStyle.init)
+          | (Some s, Some e) -> Some (StrokeStyle.update e s)
         { model with style = updated }

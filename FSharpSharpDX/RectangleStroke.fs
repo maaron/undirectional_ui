@@ -10,62 +10,43 @@ open SharpDX.Windows
 
 open Ui
 open Brush
+open Stroke
+open Resource
 
-type Event =
-    | Size of Size2F
-    | Brush of Brush.Model
-    | StrokeWidth of float32
+type Event = 
+  | Size of Size2F
+  | Stroke of Stroke.Event
 
-type RectangleStrokeResource = 
-  { target: RenderTarget
-    stroke: Brush.Resource
-  }
-  with 
-    member x.Dispose() = 
-        x.stroke.Dispose()
-
-    interface IDisposable with
-        member x.Dispose() = x.Dispose()
-
-type StrokeModel = {
-    stroke: Brush.Model
-    strokeWidth: float32
-    strokeStyle: StrokeStyle option
-} with
-    member x.create rt = 
-      { target = rt
-        stroke = x.stroke.create rt
-      }
-
-    member x.update (resource: RectangleStrokeResource) =
-      resource.Dispose()
-      x.create resource.target
-
-let rectangleStrokeDefault: Ui.Interface<Event, ResourceModel<StrokeModel, RectangleStrokeResource>> =
+let rectangleStrokeDefault: Ui.Interface<Event, Stroke.Model> =
   { init =
         let model = 
           { bounds = Size2F.Zero
-            content = 
-              { properties =
-                  { stroke = Solid Color.Transparent
-                    strokeWidth = 0.0f 
-                    strokeStyle = None }
-                resource = None } }
+            content = Stroke.init }
         let cmd = Ui.Cmd.none
         (model, cmd)
 
     view = 
         fun m rt -> 
-            m.content.resource |> Option.map
+            m.content.brush |> Resource.map
               ( fun resource ->
+                    let brush = brush resource
+                    
+                    let style = 
+                        match m.content.style with
+                        | Some (props, s) -> 
+                            match s with
+                            | Created (target, resource) -> resource
+                            | Released -> null
+                        | _ -> null
+
                     rt.DrawRectangle(
                         RawRectangleF(
                             0.0f, 0.0f, 
                             m.bounds.Width, 
                             m.bounds.Height), 
-                        resource.stroke.brush, 
-                        m.content.properties.strokeWidth,
-                        null)
+                        brush, 
+                        m.content.width,
+                        style)
               ) |> ignore
 
     update =
@@ -73,21 +54,14 @@ let rectangleStrokeDefault: Ui.Interface<Event, ResourceModel<StrokeModel, Recta
             match e with
             | Event (Size s) -> ({ m with bounds = s }, Cmd.none)
 
-            | Event (Brush stroke) ->
-                let properties = { m.content.properties with stroke = stroke }
-                let resource = m.content.resource |> Option.map properties.update
-                ({ m with content = { m.content with properties = properties; resource = resource } }, Cmd.none)
+            | Event (Stroke stroke) ->
+                ({ m with content = Stroke.update stroke m.content }, Cmd.none)
 
-            | Event (StrokeWidth width) ->
-                ({ m with content = { m.content with properties = { m.content.properties with strokeWidth = width }}}, Cmd.none)
-            
             | Content (Resource (Create rt)) -> 
-                let resource = Some (m.content.properties.create rt)
-                ({ m with content = { m.content with resource = resource } }, Cmd.none)
+                ({ m with content = Stroke.create m.content rt }, Cmd.none)
             
             | Content (Resource (Release)) ->
-                m.content.resource |> Option.map (fun f -> f.Dispose()) |> ignore
-                ({ m with content = { m.content with resource = None }}, Cmd.none)
+                ({ m with content = Stroke.release m.content }, Cmd.none)
             
             | _ -> (m, Cmd.none)
   }
