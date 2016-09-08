@@ -17,6 +17,7 @@ open Arranged
 open Overlayed
 open Mouseover
 open Bordered
+open Stacked
 
 type MainForm<'e, 'm>(ui: Ui<'e, 'm>) =
     inherit Form()
@@ -124,7 +125,17 @@ let main argv =
      |> bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid Color.Beige) ]
      |> margined 10.0f
 
-    let app = 
+    let template color = 
+        rectangle [ Fill (Solid color); Size (Size2F(40.0f, 20.0f)) ]
+     |> onmouseover 
+          (mapBool (sendEvents [Fill (Solid Color.White)])
+                   (sendEvents [Fill (Solid color)]))
+     |> bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid Color.Beige) ]
+     |> padded 5.0f
+
+    let app = initialize (stacked template) [ List [Color.Red; Color.Blue; Color.Green] ]
+    
+    let app2 = 
         box
      |> overlayed innerBox
      |> margined 10.0f

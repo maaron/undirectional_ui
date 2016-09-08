@@ -10,9 +10,6 @@ open SharpDX.Windows
 
 open Ui
 
-let maxSize (s1: Size2F) (s2: Size2F) =
-    Size2F(max s1.Width s2.Width, max s1.Height s2.Height)
-
 type Event<'b, 't> =
   | Bottom of 'b
   | Top of 't

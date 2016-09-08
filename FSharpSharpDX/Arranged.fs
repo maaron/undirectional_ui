@@ -25,7 +25,7 @@ type Event<'e> =
   | Arrange of Arrange
   | Arranged of 'e
 
-type ArrangedModel<'m> = {
+type Model<'m> = {
     arrange: Arrange
     bounds: Size2F
     layout: Layout
@@ -35,10 +35,13 @@ type ArrangedModel<'m> = {
 let translateCrop vec outerSize innerSize =
     { 
     outer = outerSize
-    inner = innerSize
+    inner = Geometry.minSize innerSize outerSize
     transform = Matrix3x2.Translation(vec)
     inverse = Matrix3x2.Translation(-vec)
     }
+
+let translate vec outer inner = 
+    translateCrop vec inner outer
 
 let center (outer: Size2F) (inner: Size2F) =
     let x = outer.Width / 2.0f - inner.Width / 2.0f
@@ -54,7 +57,7 @@ let padding thickness (outer: Size2F) (inner: Size2F) =
     let size = (Size2F(inner.Width + thickness * 2.0f, inner.Height + thickness * 2.0f))
     translateCrop (Vector2(thickness, thickness)) size inner
 
-let arranged (arrange: Arrange) (ui: Ui<'e, 'm>): Ui<Event<'e>, ArrangedModel<'m>> = 
+let arranged (arrange: Arrange) (ui: Ui<'e, 'm>): Ui<Event<'e>, Model<'m>> = 
   { init = 
         let (sub, cmd) = ui.init
         let model =
@@ -62,13 +65,7 @@ let arranged (arrange: Arrange) (ui: Ui<'e, 'm>): Ui<Event<'e>, ArrangedModel<'m
             bounds = Size2F.Zero
             arrange = arrange
             arranged = sub
-            layout = 
-                {
-                outer = Size2F.Zero
-                inner = Size2F.Zero
-                transform = Matrix3x2.Identity
-                inverse = Matrix3x2.Identity 
-                }
+            layout = arrange Size2F.Zero (ui.bounds sub)
             }
         (model, Cmd.map Arranged cmd) 
 
@@ -139,7 +136,7 @@ let onsize (update: Size2F -> InterfaceModify<'e, 'm>) ui =
             | _ -> ui.update event model
   }
 
-let translated vec = arranged (translateCrop vec)
+let translated vec = arranged (translate vec)
 
 let centered ui = arranged center ui
 

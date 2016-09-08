@@ -1,7 +1,15 @@
 ﻿
-namespace Geometry
+module Geometry
+
+open SharpDX
 
 type Size = { width: float32; height: float32 }
+
+let maxSize (s1: Size2F) (s2: Size2F) =
+    Size2F(max s1.Width s2.Width, max s1.Height s2.Height)
+
+let minSize (s1: Size2F) (s2: Size2F) =
+    Size2F(min s1.Width s2.Width, min s1.Height s2.Height)
 
 module M32 =
     open SharpDX.Mathematics.Interop
