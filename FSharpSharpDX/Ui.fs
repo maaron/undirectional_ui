@@ -86,7 +86,7 @@ let apply (init: ContentModel<'m> * Cmd<'e>) (ui: Interface<'e, 'm>) (events: 'e
         (m2, Cmd.batch [cmd; cmd2])
     events |> (init |> List.fold folder)
 
-let augmentModel (init: 'm2) (update: InterfaceEvent<'e> -> ('m2 * ContentModel<'m>) -> ('m2 * ContentModel<'m>)) (ui: Interface<'e, 'm>): Interface<'e, 'm2 * 'm> =
+let augmentModelDeprecated (init: 'm2) (update: InterfaceEvent<'e> -> ('m2 * ContentModel<'m>) -> ('m2 * ContentModel<'m>)) (ui: Interface<'e, 'm>): Interface<'e, 'm2 * 'm> =
   { init = 
         let (sub, cmd) = ui.init
         let model = { bounds = sub.bounds; content = (init, sub.content) }
@@ -102,7 +102,7 @@ let augmentModel (init: 'm2) (update: InterfaceEvent<'e> -> ('m2 * ContentModel<
             ({ bounds = cmUpdate.bounds; content = (mAugUpdate, cmUpdate.content) }, cmd)
   }
 
-let augment (init: 'm2) (update: InterfaceUpdate<'e, 'm> -> InterfaceEvent<'e> -> ('m2 * ContentModel<'m>) -> ('m2 * ContentModel<'m>) * Cmd<'e>) (ui: Interface<'e, 'm>): Interface<'e, 'm2 * 'm> =
+let augmentDeprecated (init: 'm2) (update: InterfaceUpdate<'e, 'm> -> InterfaceEvent<'e> -> ('m2 * ContentModel<'m>) -> ('m2 * ContentModel<'m>) * Cmd<'e>) (ui: Interface<'e, 'm>): Interface<'e, 'm2 * 'm> =
   { init = 
         let (sub, cmd) = ui.init
         let model = { bounds = sub.bounds; content = (init, sub.content) }
@@ -144,7 +144,7 @@ let falseToTrue prev next = next && not prev
 // outside of the context of the combinator, i.e., combinators upstream from this one won't 
 // receive the event.
 let onmouseoverOrig handler =
-    augment false 
+    augmentDeprecated false 
         (fun update e (b, m) -> 
             let updateMouseOver isOver =
                 let (normalUpdate, cmd) = update e m

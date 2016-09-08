@@ -14,6 +14,8 @@ open RectangleStroke
 open Overlayed
 open Arranged
 open Stroke
+open Mapped
+open Augmented
 
 type Event<'a> =
   | Border of Stroke.Event
@@ -50,22 +52,26 @@ let bordered ui =
   }
 #endif
 
-let map eventMap commandMap ui =
-    { 
+type FrameEvent = float32
+
+let frame =
+    {
     init = 
-        let (model, cmd) = ui.init
-        (model, Cmd.map commandMap cmd)
-    
-    view = ui.view
-    
+        let (rectmodel, rectcmd) = rectangleStrokeDefault.init
+        let model =
+            {
+            bounds = Size2F.Zero
+            content = (rectmodel.bounds, rectmodel)
+            }
+        (model, rectcmd)
+
+    view = fun model -> rectangleStrokeDefault.view (snd (model.content))
+
     update =
-        fun event model -> 
-            let (model, cmd) =
-                match event with
-                | Event e -> ui.update (Event (eventMap e)) model
-                | Input i -> ui.update (Input i) model
-                | InterfaceEvent.Content c -> ui.update (InterfaceEvent.Content c) model
-            (model, Cmd.map commandMap cmd)
+        fun event model ->
+            let (width, rect) = model.content
+            match event with
+            | Content (Bounds b) -> sendEvents [] rectangleStrokeDefault.update
     }
 
 let bordered props ui =
@@ -87,14 +93,14 @@ let bordered props ui =
  |> padded width
  |> overlayed border
 
- #if true
- |> map
+ |> mapMany
         (fun e -> 
             match e with 
-            | Border b -> Bottom b
-            | BorderContent c -> Top c)
+            | Border (Width w) -> [Top (Stroke (Width w)); Bottom (Padding w)]
+            | Border b -> [Top (Stroke b)]
+            | BorderContent c -> [Top c])
         (fun e ->
             match e with
-            | Bottom b -> Border b
+            | Bottom (Padded b) -> Border b
+            | Bottom (Padding p) -> Border (Width p)
             | Top c -> BorderContent c)
-#endif

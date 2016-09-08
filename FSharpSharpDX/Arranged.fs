@@ -9,6 +9,7 @@ open SharpDX.Mathematics.Interop
 open SharpDX.Windows
 
 open Ui
+open Mapped
 
 type Layout = 
   { size: Size2F
@@ -18,10 +19,12 @@ type Layout =
 
 type Arrange = Size2F -> Size2F -> Size2F * Layout
 
-type Event =
+type Event<'e> =
   | Arrange of Arrange
+  | Arranged of 'e
 
 type ArrangedModel<'m> = {
+    arrange: Arrange
     layout: Layout
     arranged: ContentModel<'m>
 }
@@ -47,18 +50,19 @@ let padding thickness (outer: Size2F) (inner: Size2F) =
     let size = (Size2F(inner.Width + thickness * 2.0f, inner.Height + thickness * 2.0f))
     translateCrop (Vector2(thickness, thickness)) size inner
 
-let arranged (arrange: Arrange) (ui: Interface<'e, 'm>): Interface<'e, ArrangedModel<'m>> = 
+let arranged (arrange: Arrange) (ui: Interface<'e, 'm>): Interface<Event<'e>, ArrangedModel<'m>> = 
   { init = 
         let (sub, cmd) = ui.init
         let model =
             { bounds = Size2F.Zero
               content = 
-                { arranged = sub
+                { arrange = arrange
+                  arranged = sub
                   layout = 
                     { size = Size2F.Zero
                       transform = Matrix3x2.Identity
                       inverse = Matrix3x2.Identity } } }
-        (model, cmd) 
+        (model, Cmd.map Arranged cmd) 
 
     view =
         fun m t ->
@@ -78,12 +82,12 @@ let arranged (arrange: Arrange) (ui: Interface<'e, 'm>): Interface<'e, ArrangedM
         fun e m -> 
             let updateArrangement outer (inner, cmd) =
                 if inner.bounds = outer.bounds then 
-                    ({ outer with content = { outer.content with arranged = inner } }, cmd)
+                    ({ outer with content = { outer.content with arranged = inner } }, Cmd.map Arranged cmd)
                 else
-                    let (outerSize, layout) = arrange outer.bounds inner.bounds
+                    let (outerSize, layout) = outer.content.arrange outer.bounds inner.bounds
                     let (arrangedContent, arrangedCmd) = ui.update (Content (Bounds layout.size)) inner
-                    let model = { bounds = outerSize; content = { arranged = arrangedContent; layout = layout } }
-                    (model, Cmd.batch [cmd; arrangedCmd])
+                    let model = { bounds = outerSize; content = { outer.content with arranged = arrangedContent; layout = layout } }
+                    (model, [cmd; arrangedCmd] |> List.map (Cmd.map Arranged) |> Cmd.batch)
 
             match e with
             | Input (MouseMove p) -> 
@@ -94,11 +98,20 @@ let arranged (arrange: Arrange) (ui: Interface<'e, 'm>): Interface<'e, ArrangedM
                 else
                     updateArrangement m (ui.update (Input MouseLeave) m.content.arranged)
 
+            | Input i ->
+                updateArrangement m (ui.update (Input i) m.content.arranged)
+
             | Content (Bounds s) -> 
                 updateArrangement { m with bounds = s } (m.content.arranged, Cmd.none)
-                
-            | _ -> 
-                updateArrangement m (ui.update e m.content.arranged)
+            
+            | Content c ->
+                updateArrangement m (ui.update (Content c) m.content.arranged)
+
+            | Event (Arrange arrange) -> 
+                updateArrangement { m with content = { m.content with arrange = arrange } } (m.content.arranged, Cmd.none)
+            
+            | Event (Arranged e) -> 
+                updateArrangement m (ui.update (Event e) m.content.arranged)
   }
 
 let onsize (update: Size2F -> InterfaceModify<'e, 'm>) ui =
@@ -119,4 +132,20 @@ let centered ui = arranged center ui
 
 let margined thickness = arranged (margin thickness)
 
-let padded thickness = arranged (padding thickness)
+type PaddedEvent<'e> =
+  | Padding of float32
+  | Padded of 'e
+
+let padded thickness ui = 
+    arranged (padding thickness) ui
+ |> Mapped.map
+        (fun e -> 
+            match e with
+            | Padding p -> Arrange (padding p)
+            | Padded e -> Arranged e
+        )
+        (fun e ->
+            match e with
+            | Arrange e -> Padding 0.0f
+            | Arranged e -> Padded e
+        )

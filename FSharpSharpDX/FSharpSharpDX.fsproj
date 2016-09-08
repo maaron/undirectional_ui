@@ -60,6 +60,7 @@
     <Content Include="packages.config" />
     <None Include="NonEmbeddedTypes.fsx" />
     <Compile Include="Ui.fs" />
+    <Compile Include="Mapped.fs" />
     <Compile Include="Resource.fs" />
     <Compile Include="Brush.fs" />
     <Compile Include="StrokeStyle.fs" />
