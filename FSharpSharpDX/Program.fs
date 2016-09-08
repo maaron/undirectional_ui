@@ -18,7 +18,7 @@ open Overlayed
 open Mouseover
 open Bordered
 
-type MainForm<'e, 'm>(ui: Interface<'e, 'm>) =
+type MainForm<'e, 'm>(ui: Ui<'e, 'm>) =
     inherit Form()
 
     let factory = new Direct2D1.Factory(FactoryType.SingleThreaded, DebugLevel.Information)
@@ -40,7 +40,7 @@ type MainForm<'e, 'm>(ui: Interface<'e, 'm>) =
 
     override this.OnPaint(e: PaintEventArgs) =
         if not resourcesAllocated then 
-            this.update (Content (Resource (Create rt)))
+            this.update (Resource (Create rt))
             resourcesAllocated <- true
 
         rt.BeginDraw()
@@ -51,7 +51,7 @@ type MainForm<'e, 'm>(ui: Interface<'e, 'm>) =
             rt.EndDraw()
         with
         | _ -> 
-            this.update (Content (Resource Release))
+            this.update (Resource Release)
             resourcesAllocated <- false
 
     override this.OnHandleCreated(e: EventArgs) =
@@ -77,14 +77,14 @@ type MainForm<'e, 'm>(ui: Interface<'e, 'm>) =
         let size = Size2(this.ClientSize.Width, this.ClientSize.Height)
         let sizef = Size2F(float32(this.ClientSize.Width), float32(this.ClientSize.Height))
         rt.Resize(Size2(this.ClientSize.Width, this.ClientSize.Height))
-        this.update (Content (Bounds sizef))
+        this.update (Bounds sizef)
         ()
 
     override this.OnLoad(e: EventArgs) =
         let size = Size2(this.ClientSize.Width, this.ClientSize.Height)
         let sizef = Size2F(float32(this.ClientSize.Width), float32(this.ClientSize.Height))
         rt.Resize(Size2(this.ClientSize.Width, this.ClientSize.Height))
-        this.update (Content (Bounds sizef))
+        this.update (Bounds sizef)
         ()
 
     override this.OnMouseMove(e: MouseEventArgs) =
@@ -94,11 +94,11 @@ type MainForm<'e, 'm>(ui: Interface<'e, 'm>) =
         this.update (Input MouseLeave)
 
     override this.OnClosed(e: EventArgs) =
-        this.update (Content (Resource Release))
+        this.update (Resource Release)
         if not (rt = null) then rt.Dispose()
         factory.Dispose()
 
-let makeForm (ui: Interface<'e, 'm>) = new MainForm<'e, 'm>(ui)
+let makeForm (ui: Ui<'e, 'm>) = new MainForm<'e, 'm>(ui)
 
 [<EntryPoint>]
 let main argv = 
@@ -129,7 +129,8 @@ let main argv =
      |> overlayed innerBox
      |> margined 10.0f
 
-    let form = makeForm app
+    let form = 
+        makeForm app
 
     Application.Run(form);
     

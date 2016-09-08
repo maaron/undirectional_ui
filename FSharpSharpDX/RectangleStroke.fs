@@ -20,29 +20,30 @@ type Event =
 
 type Model = 
   { topLeft: Vector2
+    bounds: Size2F
     stroke: Stroke.Model
   }
 
-let rectangleStrokeDefault: Ui.Interface<Event, Model> =
+let rectangleStrokeDefault: Ui.Ui<Event, Model> =
   { init =
         let model = 
-          { bounds = Size2F.Zero
-            content = 
-              { topLeft = Vector2(0.0f, 0.0f)
-                stroke = Stroke.init 
-              }
-          }
-        let cmd = Ui.Cmd.none
-        (model, cmd)
+            {
+            topLeft = Vector2(0.0f, 0.0f)
+            bounds = Size2F.Zero
+            stroke = Stroke.init 
+            }
+        (model, Cmd.none)
 
+    bounds = fun model -> model.bounds
+    
     view = 
         fun m rt -> 
-            m.content.stroke.brush |> Resource.map
+            m.stroke.brush |> Resource.map
               ( fun resource ->
                     let brush = brush resource
                     
                     let style = 
-                        match m.content.stroke.style with
+                        match m.stroke.style with
                         | Some (props, s) -> 
                             match s with
                             | Created (target, resource) -> resource
@@ -51,10 +52,10 @@ let rectangleStrokeDefault: Ui.Interface<Event, Model> =
 
                     rt.DrawRectangle(
                         RawRectangleF(
-                            m.content.topLeft.X, m.content.topLeft.Y, 
+                            m.topLeft.X, m.topLeft.Y, 
                             m.bounds.Width, m.bounds.Height), 
                         brush, 
-                        m.content.stroke.width,
+                        m.stroke.width,
                         style)
               ) |> ignore
 
@@ -63,16 +64,16 @@ let rectangleStrokeDefault: Ui.Interface<Event, Model> =
             match e with
             | Event (Size s) -> ({ m with bounds = s }, Cmd.none)
 
-            | Event (TopLeft p) -> ({ m with content = { m.content with topLeft = p } }, Cmd.none)
+            | Event (TopLeft p) -> ({ m with topLeft = p }, Cmd.none)
 
             | Event (Stroke stroke) ->
-                ({ m with content = { m.content with stroke = Stroke.update stroke m.content.stroke } }, Cmd.none)
+                ({ m with stroke = Stroke.update stroke m.stroke }, Cmd.none)
 
-            | Content (Resource (Create rt)) -> 
-                ({ m with content = { m.content with stroke = Stroke.create m.content.stroke rt } }, Cmd.none)
+            | Resource (Create rt) -> 
+                ({ m with stroke = Stroke.create m.stroke rt }, Cmd.none)
             
-            | Content (Resource (Release)) ->
-                ({ m with content = { m.content with stroke = Stroke.release m.content.stroke } }, Cmd.none)
+            | Resource (Release) ->
+                ({ m with stroke = Stroke.release m.stroke }, Cmd.none)
             
             | _ -> (m, Cmd.none)
   }

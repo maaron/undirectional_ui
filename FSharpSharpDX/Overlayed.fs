@@ -17,38 +17,49 @@ type Event<'b, 't> =
   | Bottom of 'b
   | Top of 't
 
-let overlayed (top: Interface<'e2, 'm2>) (bottom: Interface<'e1, 'm1>): Interface<Event<'e1, 'e2>, ContentModel<'m1> * ContentModel<'m2>> =
+type Model<'m1, 'm2> =
+    {
+    bounds: Size2F
+    bottom: 'm1
+    top: 'm2
+    }
+
+let overlayed (top: Ui<'e2, 'm2>) (bottom: Ui<'e1, 'm1>): Ui<Event<'e1, 'e2>, Model<'m1, 'm2>> =
   { init = 
         let (m1, cmd1) = bottom.init
         let (m2, cmd2) = top.init
         let model =
-          { bounds = Size2F(max m1.bounds.Width m2.bounds.Width, max m1.bounds.Height m2.bounds.Height)
-            content = (m1, m2)
-          }
+            {
+            bounds = Size2F.Zero
+            bottom = m1
+            top = m2
+            }
         (model, Cmd.batch [Cmd.map Bottom cmd1; Cmd.map Top cmd2])
 
+    bounds = fun model -> bottom.bounds model.bottom
+
     view = 
-        fun m rt ->
-            let (m1, m2) = m.content
-            bottom.view m1 rt
-            top.view m2 rt
+        fun model target ->
+            bottom.view model.bottom target
+            top.view model.top target
 
     update = 
         fun event model ->
-            let { bounds = bounds; content = (bottomModel, topModel) } = model
             
             let (bottomModel2, bottomCmd) = 
                 match event with
-                | Event (Bottom bottomEvent) -> bottom.update (Event bottomEvent) bottomModel
-                | Event (Top topEvent) -> (bottomModel, Cmd.none)
-                | Input i -> bottom.update (Input i) bottomModel
-                | Content c -> bottom.update (Content c) bottomModel
+                | Event (Bottom bottomEvent) -> bottom.update (Event bottomEvent) model.bottom
+                | Event (Top topEvent) -> (model.bottom, Cmd.none)
+                | Input i -> bottom.update (Input i) model.bottom
+                | Resource r -> bottom.update (Resource r) model.bottom
+                | Bounds b -> bottom.update (Bounds b) model.bottom
 
+            let bounds2 = bottom.bounds bottomModel2
             let (topModelSized, topModelCmd) =
-                if bottomModel.bounds = bottomModel2.bounds then
-                    (topModel, Cmd.none)
+                if model.bounds = bounds2 then
+                    (model.top, Cmd.none)
                 else
-                    top.update (Content (Bounds bottomModel2.bounds)) topModel
+                    top.update (Bounds bounds2) model.top
 
             let (topModel2, topModelCmd2) =
                 match event with
@@ -56,8 +67,8 @@ let overlayed (top: Interface<'e2, 'm2>) (bottom: Interface<'e1, 'm1>): Interfac
                 | Event (Bottom bottomEvent) -> (topModelSized, Cmd.none)
                 | Input i -> top.update (Input i) topModelSized
                 // Bounds for the overlayed UI are determined by the UI underneath
-                | Content (Bounds b) -> (topModelSized, Cmd.none)
-                | Content c -> top.update (Content c) topModelSized
+                | Bounds b -> (topModelSized, Cmd.none)
+                | Resource r -> top.update (Resource r) topModelSized
             
-            ({ bounds = bottomModel2.bounds; content = (bottomModel2, topModel2) }, Cmd.batch [Cmd.map Bottom bottomCmd; Cmd.map Top topModelCmd; Cmd.map Top topModelCmd2])
+            ({ bounds = bounds2; bottom = bottomModel2; top = topModel2 }, Cmd.batch [Cmd.map Bottom bottomCmd; Cmd.map Top topModelCmd; Cmd.map Top topModelCmd2])
   }

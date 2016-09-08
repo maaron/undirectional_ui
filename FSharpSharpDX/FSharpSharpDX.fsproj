@@ -58,7 +58,6 @@
     <Compile Include="Geometry.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
-    <None Include="NonEmbeddedTypes.fsx" />
     <Compile Include="Ui.fs" />
     <Compile Include="Mapped.fs" />
     <Compile Include="Resource.fs" />

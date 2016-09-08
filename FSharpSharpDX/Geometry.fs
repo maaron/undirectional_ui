@@ -1,6 +1,8 @@
 ﻿
 namespace Geometry
 
+type Size = { width: float32; height: float32 }
+
 module M32 =
     open SharpDX.Mathematics.Interop
 

@@ -2,50 +2,33 @@
 
 open Ui
 
-type Augmented<'e, 'm, 'a> = Interface<'e, 'a * 'm>
+type Augmented<'e, 'm, 'a> = Ui<'e, 'a * 'm>
 
-let augmentModel init update ui =
+let augmentModel initAug update ui =
   { init = 
         let (sub, cmd) = ui.init
-        let model = { bounds = sub.bounds; content = (init, sub.content) }
-        (model, cmd)
-    
-    view = fun m -> ui.view { bounds = m.bounds; content = snd m.content }
-    
-    update = 
-        fun event model -> 
-            let uimodel = { bounds = model.bounds; content = snd model.content }
-            let (uimodel2, uicmd) = ui.update event uimodel
-            let model2 = update event { bounds = uimodel2.bounds; content = (fst model.content, uimodel2.content) }
-            (model2, uicmd)
-  }
+        ((initAug, sub), cmd)
 
-let augmentContent init update ui =
-  { init = 
-        let (sub, cmd) = ui.init
-        let model = { bounds = sub.bounds; content = (init, sub.content) }
-        (model, cmd)
+    bounds = fun (aug, model) -> ui.bounds model
     
-    view = fun m -> ui.view { bounds = m.bounds; content = snd m.content }
+    view = fun (aub, model) -> ui.view model
     
     update = 
-        fun event model -> 
-            let uimodel = { bounds = model.bounds; content = snd model.content }
-            let (uimodel2, cmd) = ui.update event uimodel
-            let augcontent = update event (fst model.content, uimodel2.content)
-            ({ bounds = uimodel2.bounds; content = augcontent }, cmd)
+        fun event (aug, model) -> 
+            let (model2, cmd) = ui.update event model
+            (update event (aug, model2), cmd)
   }
 
 let onAugmentChange (getUpdate: 'a -> InterfaceModify<'e, 'a * 'm>) (ui: Augmented<'e, 'm, 'a>) =
     let update event model =
         let (model2, cmd) = ui.update event model
-        if not (fst model.content = fst model2.content) 
+        if not (fst model = fst model2) 
             then 
-                let (model3, changecmd) = getUpdate (fst model2.content) ui.update model2
+                let (model3, changecmd) = getUpdate (fst model2) ui.update model2
                 (model3, Cmd.batch [cmd; changecmd])
             else (model2, Cmd.none)
         
     { ui with update = update }
 
-let updateAugmented (update: InterfaceEvent<'e> -> 'a -> 'a * Cmd<'e>) (ui: Interface<'e, 'a * 'b>) =
+let updateAugmented (update: InterfaceEvent<'e> -> 'a -> 'a * Cmd<'e>) (ui: Ui<'e, 'a * 'b>) =
     ui.update 

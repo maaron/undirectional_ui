@@ -15,21 +15,30 @@ type Event =
     | Size of Size2F
     | Fill of Brush.Event
 
-let rectangleDefault: Interface<Event, Brush.Model> =
+type Model =
+    {
+    topLeft: Vector2
+    bounds: Size2F
+    brush: Brush.Model
+    }
+
+let rectangleDefault: Ui<Event, Model> =
   { init =
         let model = 
-          { bounds = Size2F.Zero
-            content = Brush.init }
-        let cmd = Cmd.none
-        (model, cmd)
+          { topLeft = Vector2.Zero
+            bounds = Size2F.Zero
+            brush = Brush.init }
+        (model, Cmd.none)
+
+    bounds = fun m -> m.bounds
 
     view = 
         fun m rt -> 
-            m.content |> Resource.map
+            m.brush |> Resource.map
               ( fun resource ->
                     rt.FillRectangle(
                         RawRectangleF(
-                            0.0f, 0.0f, 
+                            m.topLeft.X, m.topLeft.Y, 
                             m.bounds.Width, 
                             m.bounds.Height), 
                         brush resource)
@@ -43,13 +52,13 @@ let rectangleDefault: Interface<Event, Brush.Model> =
             | Event (Size s) -> ({ m with bounds = s }, Cmd.none)
 
             | Event (Fill fill) ->
-                ({ m with content = Brush.update fill m.content }, Cmd.none)
+                ({ m with brush = Brush.update fill m.brush }, Cmd.none)
             
-            | Content (Resource (Create rt)) -> 
-                ({ m with content = Brush.create m.content rt }, Cmd.none)
+            | Resource (Create rt) -> 
+                ({ m with brush = Brush.create m.brush rt }, Cmd.none)
             
-            | Content (Resource (Release)) ->
-                ({ m with content = Brush.release m.content }, Cmd.none)
+            | Resource (Release) ->
+                ({ m with brush = Brush.release m.brush }, Cmd.none)
             
             | _ -> (m, Cmd.none)
   }

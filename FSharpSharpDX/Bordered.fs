@@ -58,20 +58,20 @@ let frame =
     {
     init = 
         let (rectmodel, rectcmd) = rectangleStrokeDefault.init
-        let model =
-            {
-            bounds = Size2F.Zero
-            content = (rectmodel.bounds, rectmodel)
-            }
+        let model = (rectmodel.bounds, rectmodel)
         (model, rectcmd)
 
-    view = fun model -> rectangleStrokeDefault.view (snd (model.content))
+    bounds = fst
+
+    view = fun model -> rectangleStrokeDefault.view (snd model)
 
     update =
         fun event model ->
-            let (width, rect) = model.content
+            let (width, rect) = model
             match event with
-            | Content (Bounds b) -> sendEvents [] rectangleStrokeDefault.update
+            // TODO
+            | Bounds b -> (model, Cmd.none)
+            | _ -> (model, Cmd.none)
     }
 
 let bordered props ui =
@@ -92,7 +92,7 @@ let bordered props ui =
     ui
  |> padded width
  |> overlayed border
-
+ #if false
  |> mapMany
         (fun e -> 
             match e with 
@@ -104,3 +104,4 @@ let bordered props ui =
             | Bottom (Padded b) -> Border b
             | Bottom (Padding p) -> Border (Width p)
             | Top c -> BorderContent c)
+#endif

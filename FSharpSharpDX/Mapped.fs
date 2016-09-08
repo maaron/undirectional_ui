@@ -9,6 +9,8 @@ let map eventMap commandMap ui =
         let (model, cmd) = ui.init
         (model, Cmd.map commandMap cmd)
     
+    bounds = ui.bounds
+    
     view = ui.view
     
     update =
@@ -17,7 +19,8 @@ let map eventMap commandMap ui =
                 match event with
                 | Event e -> ui.update (Event (eventMap e)) model
                 | Input i -> ui.update (Input i) model
-                | InterfaceEvent.Content c -> ui.update (InterfaceEvent.Content c) model
+                | Bounds b -> ui.update (Bounds b) model
+                | Resource r -> ui.update (Resource r) model
             (model, Cmd.map commandMap cmd)
     }
 
@@ -27,6 +30,8 @@ let mapMany eventMap commandMap ui =
         let (model, cmd) = ui.init
         (model, Cmd.map commandMap cmd)
     
+    bounds = ui.bounds
+
     view = ui.view
     
     update =
@@ -35,6 +40,7 @@ let mapMany eventMap commandMap ui =
                 match event with
                 | Event e -> sendEvents (eventMap e) ui.update model
                 | Input i -> ui.update (Input i) model
-                | InterfaceEvent.Content c -> ui.update (InterfaceEvent.Content c) model
+                | Bounds b -> ui.update (Bounds b) model
+                | Resource r -> ui.update (Resource r) model
             (model, Cmd.map commandMap cmd)
     }
