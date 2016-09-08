@@ -16,6 +16,7 @@ open Rectangle
 open Arranged
 open Overlayed
 open Mouseover
+open Bordered
 
 type MainForm<'e, 'm>(ui: Interface<'e, 'm>) =
     inherit Form()
@@ -111,16 +112,21 @@ let main argv =
      |> onmouseover 
           (mapBool (sendEvents [Fill (Solid Color.Blue)])
                    (sendEvents [Fill (Solid Color.Green)]))
-     |> padded 10.0f
+     |> bordered 
+          [ Stroke.Event.Width 5.0f
+            Stroke.Event.Brush (Solid Color.Yellow)
+          ]
 
     let innerBox =
         rectangle 
           [ Fill (Solid Color.Red)
             Size (Size2F(60.0f, 130.0f)) ]
-     |> margined 20.0f
+     |> bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid Color.Beige) ]
+     |> margined 10.0f
 
     let app = 
-        (overlayed box innerBox)
+        box
+     |> overlayed innerBox
      |> margined 10.0f
 
     let form = makeForm app

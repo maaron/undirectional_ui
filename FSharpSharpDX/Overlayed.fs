@@ -17,7 +17,7 @@ type Event<'b, 't> =
   | Bottom of 'b
   | Top of 't
 
-let overlayed (bottom: Interface<'e1, 'm1>) (top: Interface<'e2, 'm2>): Interface<Event<'e1, 'e2>, ContentModel<'m1> * ContentModel<'m2>> =
+let overlayed (top: Interface<'e2, 'm2>) (bottom: Interface<'e1, 'm1>): Interface<Event<'e1, 'e2>, ContentModel<'m1> * ContentModel<'m2>> =
   { init = 
         let (m1, cmd1) = bottom.init
         let (m2, cmd2) = top.init
@@ -34,31 +34,30 @@ let overlayed (bottom: Interface<'e1, 'm1>) (top: Interface<'e2, 'm2>): Interfac
             top.view m2 rt
 
     update = 
-        fun e m ->
-            let (content, cmds) = 
-                match e with
-                | Event (Bottom e1) -> 
-                    let (m1, c1) = bottom.update (Event e1) (fst m.content)
-                    ((m1, snd m.content), Cmd.map Bottom c1)
-
-                | Event (Top e2) -> 
-                    let (msub, csub) = top.update (Event e2) (snd m.content)
-                    ((fst m.content, msub), Cmd.map Top csub)
-
-                | Input i ->
-                    let (m1, c1) = bottom.update (Input i) (fst m.content)
-                    let (m2, c2) = top.update (Input i) (snd m.content)
-                    ((m1, m2), Cmd.batch [Cmd.map Bottom c1; Cmd.map Top c2])
-
-                | Content (Bounds b) ->
-                    let (m1, c1) = bottom.update (Content (Bounds b)) (fst m.content)
-                    let (m2, c2) = top.update (Content (Bounds b)) (snd m.content)
-                    ((m1, m2), Cmd.batch [Cmd.map Bottom c1; Cmd.map Top c2])
-
-                | Content c ->
-                    let (m1, c1) = bottom.update (Content c) (fst m.content)
-                    let (m2, c2) = top.update (Content c) (snd m.content)
-                    ((m1, m2), Cmd.batch [Cmd.map Bottom c1; Cmd.map Top c2])
+        fun event model ->
+            let { bounds = bounds; content = (bottomModel, topModel) } = model
             
-            ({ bounds = maxSize (fst content).bounds (snd content).bounds; content = content }, cmds)
+            let (bottomModel2, bottomCmd) = 
+                match event with
+                | Event (Bottom bottomEvent) -> bottom.update (Event bottomEvent) bottomModel
+                | Event (Top topEvent) -> (bottomModel, Cmd.none)
+                | Input i -> bottom.update (Input i) bottomModel
+                | Content c -> bottom.update (Content c) bottomModel
+
+            let (topModelSized, topModelCmd) =
+                if bottomModel.bounds = bottomModel2.bounds then
+                    (topModel, Cmd.none)
+                else
+                    top.update (Content (Bounds bottomModel2.bounds)) topModel
+
+            let (topModel2, topModelCmd2) =
+                match event with
+                | Event (Top topEvent) -> top.update (Event topEvent) topModelSized
+                | Event (Bottom bottomEvent) -> (topModelSized, Cmd.none)
+                | Input i -> top.update (Input i) topModelSized
+                // Bounds for the overlayed UI are determined by the UI underneath
+                | Content (Bounds b) -> (topModelSized, Cmd.none)
+                | Content c -> top.update (Content c) topModelSized
+            
+            ({ bounds = bottomModel2.bounds; content = (bottomModel2, topModel2) }, Cmd.batch [Cmd.map Bottom bottomCmd; Cmd.map Top topModelCmd; Cmd.map Top topModelCmd2])
   }
