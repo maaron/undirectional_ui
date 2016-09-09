@@ -136,7 +136,7 @@ let main argv =
     let boxStack = 
         initialize (stacked template) 
             [ List [Color.Red; Color.Blue; Color.Green] ]
-     |> padded 0.0f
+     |> padded 10.0f
     
     let app = 
         box

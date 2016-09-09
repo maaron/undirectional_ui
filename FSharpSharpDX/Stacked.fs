@@ -14,7 +14,17 @@ let stacked (template: 'p -> Ui<'e, 'm>) =
     {
     init = ([], Cmd.none)
 
-    bounds = fun model -> model |> List.fold (fun accum item -> accum) (Size2F(0.0f, 0.0f))
+    bounds = 
+        fun model -> 
+            model 
+         |> List.fold 
+                (fun accum (ui, item) -> 
+                    let itemSize = ui.bounds item
+                    Size2F(
+                        max accum.Width itemSize.Width,
+                        accum.Height + itemSize.Height)
+                )
+                (Size2F(0.0f, 0.0f))
 
     view = 
         let renderItem target (ui, model) = ui.view model target
