@@ -81,15 +81,17 @@ let margin thickness =
     }
 
 let padding thickness =
+    let doubleThickness = thickness * 2.0f
     {
     limit = 
         fun available -> 
-            let doubleThickness = thickness * 2.0f
-            Size2F(available.Width - doubleThickness, available.Height - doubleThickness)
+            Size2F(
+                max (available.Width - doubleThickness) 0.0f,
+                max (available.Height - doubleThickness) 0.0f)
 
     arrange =
         fun available desired ->
-            let bounds = Size2F(desired.Width + thickness, desired.Height + thickness)
+            let bounds = Size2F(desired.Width + doubleThickness, desired.Height + doubleThickness)
             translateLayout (Vector2(thickness, thickness)) bounds desired
     }
 
