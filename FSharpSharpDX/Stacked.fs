@@ -15,11 +15,11 @@ let stacked (template: 'p -> Ui<'e, 'm>) =
     init = ([], Cmd.none)
 
     bounds = 
-        fun model -> 
+        fun size model -> 
             model 
          |> List.fold 
                 (fun accum (ui, item) -> 
-                    let itemSize = ui.bounds item
+                    let itemSize = ui.bounds size item
                     Size2F(
                         max accum.Width itemSize.Width,
                         accum.Height + itemSize.Height)
@@ -48,7 +48,7 @@ let stacked (template: 'p -> Ui<'e, 'm>) =
                       ( fun ((i, offset), cmds) ui -> 
                             let arranged = Arranged.translated (Vector2(0.0f, offset)) ui
                             let (model, cmd) = arranged.init
-                            let bounds = arranged.bounds model
+                            let bounds = arranged.bounds model.bounds model
                             let result = (arranged, model)
                             (result, ((i, offset + bounds.Height), Cmd.batch [cmds; mapCmd i cmd]))
                       )

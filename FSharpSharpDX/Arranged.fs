@@ -11,65 +11,113 @@ open SharpDX.Windows
 open Ui
 open Mapped
 
+// This type is used to render arranged UI's, as well as map input coordinates to the arranged 
+// UI's transformed coordinate space.
 type Layout = 
     {
-    outer: Size2F
-    inner: Size2F
+    // Indicates the overall size of the arranged UI.  For example, for the padded combinator, 
+    // this size will be larger than the clip by an amout equal to the padding.  The margined
+    // combinator, on the other hand, will set this equal to the available size minus the margin.
+    bounds: Size2F
+
+    // Indicates the size of the rectangle used to clip the arranged UI's content
+    clip: Size2F
+
+    // Indicates the transform to apply to the arranged UI's content
     transform: Matrix3x2
+
+    // Indicates the reverse transform, used to map mouse coordinates to the arranged UI's 
+    // transformed coordinate space
     inverse: Matrix3x2
     }
 
-type Arrange = Size2F -> Size2F -> Layout
+// This type is used to control how layout is performed.  It is composed of two functions, 
+// "limit", amd "arrange".  Limit is passed the total bounds of the containing UI, and returns 
+// the portion of that size that is passed to the UI being arranged to calculate its size.  
+// Arrange is a function that takes the total bounds and the arranged UI's calculated size and 
+// returns the layout.
+type Arranger = 
+    {
+    limit: Size2F -> Size2F
+    arrange: Size2F -> Size2F -> Layout
+    }
+
+let translateLayout vec bounds clip =
+    {
+    bounds = bounds
+    clip = clip
+    transform = Matrix3x2.Translation(vec)
+    inverse = Matrix3x2.Translation(-vec)
+    }
+
+let translate vec = 
+    {
+    limit = id
+    arrange = 
+        fun available desired ->
+            translateLayout vec desired desired
+    }
+
+let center =
+    {
+    limit = id
+    arrange = 
+        fun available desired ->
+            let x = available.Width / 2.0f - desired.Width / 2.0f
+            let y = available.Height / 2.0f - desired.Height / 2.0f
+            translateLayout (Vector2(x, y)) available desired
+    }
+
+let margin thickness =
+    {
+    limit = 
+        fun available -> 
+            let doubleThickness = thickness * 2.0f
+            Size2F(available.Width - doubleThickness, available.Height - doubleThickness)
+
+    arrange = 
+        fun available desired ->
+            translateLayout (Vector2(thickness, thickness)) available desired
+    }
+
+let padding thickness =
+    {
+    limit = 
+        fun available -> 
+            let doubleThickness = thickness * 2.0f
+            Size2F(available.Width - doubleThickness, available.Height - doubleThickness)
+
+    arrange =
+        fun available desired ->
+            let bounds = Size2F(desired.Width + thickness, desired.Height + thickness)
+            translateLayout (Vector2(thickness, thickness)) bounds desired
+    }
 
 type Event<'e> =
-  | Arrange of Arrange
+  | Arrange of Arranger
   | Arranged of 'e
 
 type Model<'m> = {
-    arrange: Arrange
+    arranger: Arranger
     bounds: Size2F
     layout: Layout
     arranged: 'm
 }
 
-let translateCrop vec outerSize innerSize =
-    { 
-    outer = outerSize
-    inner = Geometry.minSize innerSize outerSize
-    transform = Matrix3x2.Translation(vec)
-    inverse = Matrix3x2.Translation(-vec)
-    }
-
-let translate vec outer inner = 
-    translateCrop vec inner inner
-
-let center (outer: Size2F) (inner: Size2F) =
-    let x = outer.Width / 2.0f - inner.Width / 2.0f
-    let y = outer.Height / 2.0f - inner.Height / 2.0f
-    translateCrop (Vector2(x, y)) outer inner
-
-let margin thickness (outer: Size2F) (inner: Size2F) =
-    let width = max (outer.Width - thickness * 2.0f) 0.0f
-    let height = max (outer.Height - thickness * 2.0f) 0.0f
-    translateCrop (Vector2(thickness, thickness)) outer (Size2F(width, height))
-
-let padding thickness (outer: Size2F) (inner: Size2F) =
-    let size = (Size2F(inner.Width + thickness * 2.0f, inner.Height + thickness * 2.0f))
-    translateCrop (Vector2(thickness, thickness)) size inner
-
-let arranged (arrange: Arrange) (ui: Ui<'e, 'm>): Ui<Event<'e>, Model<'m>> = 
+let arranged (arranger: Arranger) (ui: Ui<'e, 'm>): Ui<Event<'e>, Model<'m>> = 
   { init = 
         let (sub, cmd) = ui.init
+        let bounds = arranger.limit Size2F.Zero
         let model =
             {
-            bounds = Size2F.Zero
-            arrange = arrange
+            bounds = bounds
+            arranger = arranger
             arranged = sub
-            layout = arrange Size2F.Zero (ui.bounds sub)
+            layout = arranger.arrange bounds (ui.bounds bounds sub)
             }
         (model, Cmd.map Arranged cmd) 
 
-    bounds = fun m -> m.layout.outer
+    bounds = fun size model -> model.layout.bounds
 
     view =
         fun m t ->
@@ -79,7 +127,7 @@ let arranged (arrange: Arrange) (ui: Ui<'e, 'm>): Ui<Event<'e>, Model<'m>> =
             t.PushAxisAlignedClip(
                 RawRectangleF(
                     0.0f, 0.0f, 
-                    m.layout.inner.Width, m.layout.inner.Height), 
+                    m.layout.bounds.Width, m.layout.bounds.Height), 
                 AntialiasMode.PerPrimitive)
             ui.view m.arranged t
             t.PopAxisAlignedClip()
@@ -87,39 +135,43 @@ let arranged (arrange: Arrange) (ui: Ui<'e, 'm>): Ui<Event<'e>, Model<'m>> =
 
     update =
         fun e m -> 
-            let updateArrangement outer (inner, cmd) =
-                let innerBounds = ui.bounds inner
-                if innerBounds = outer.layout.inner then 
-                    ({ outer with arranged = inner }, Cmd.map Arranged cmd)
-                else
-                    let layout = outer.arrange outer.bounds innerBounds
-                    let (arrangedContent, arrangedCmd) = ui.update (Bounds layout.inner) inner
-                    let model = { outer with arranged = arrangedContent; layout = layout }
-                    (model, [cmd; arrangedCmd] |> List.map (Cmd.map Arranged) |> Cmd.batch)
+            let updateArrangement model (inner, cmd) =
+                let limit = model.arranger.limit model.bounds
+                let desired = ui.bounds limit inner
+                let layout = model.arranger.arrange limit desired
+                let (arrangedContent, arrangedCmd) = ui.update (Bounds layout.clip) inner
+                let updatedModel = { model with arranged = arrangedContent; layout = layout }
+                (updatedModel, [cmd; arrangedCmd] |> List.map (Cmd.map Arranged) |> Cmd.batch)
+
+            let updateArrangementIfChanged model (inner, cmd) =
+                let innerBounds = ui.bounds model.layout.clip inner
+                if innerBounds = model.layout.clip then 
+                    ({ model with arranged = inner }, Cmd.map Arranged cmd)
+                else updateArrangement model (inner, cmd)
 
             match e with
             | Input (MouseMove p) -> 
                 let pmapped = Matrix3x2.TransformPoint(m.layout.inverse, p)
-                if pmapped.X >= 0.0f && pmapped.X <= m.layout.inner.Width &&
-                   pmapped.Y >= 0.0f && pmapped.Y <= m.layout.inner.Height then
+                if pmapped.X >= 0.0f && pmapped.X <= m.layout.bounds.Width &&
+                   pmapped.Y >= 0.0f && pmapped.Y <= m.layout.bounds.Height then
                     updateArrangement m (ui.update (Input (MouseMove pmapped)) m.arranged)
                 else
                     updateArrangement m (ui.update (Input MouseLeave) m.arranged)
 
             | Input i ->
-                updateArrangement m (ui.update (Input i) m.arranged)
+                updateArrangementIfChanged m (ui.update (Input i) m.arranged)
 
             | Bounds s -> 
                 updateArrangement { m with bounds = s } (m.arranged, Cmd.none)
             
             | Resource r ->
-                updateArrangement m (ui.update (Resource r) m.arranged)
+                updateArrangementIfChanged m (ui.update (Resource r) m.arranged)
 
             | Event (Arrange arrange) -> 
-                updateArrangement { m with arrange = arrange } (m.arranged, Cmd.none)
+                updateArrangementIfChanged { m with arranger = arranger } (m.arranged, Cmd.none)
             
             | Event (Arranged e) -> 
-                updateArrangement m (ui.update (Event e) m.arranged)
+                updateArrangementIfChanged m (ui.update (Event e) m.arranged)
   }
 
 let onsize (update: Size2F -> InterfaceModify<'e, 'm>) ui =
