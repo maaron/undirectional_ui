@@ -41,7 +41,7 @@ let translateCrop vec outerSize innerSize =
     }
 
 let translate vec outer inner = 
-    translateCrop vec inner outer
+    translateCrop vec inner inner
 
 let center (outer: Size2F) (inner: Size2F) =
     let x = outer.Width / 2.0f - inner.Width / 2.0f

@@ -123,7 +123,7 @@ let main argv =
           [ Fill (Solid Color.Red)
             Size (Size2F(60.0f, 130.0f)) ]
      |> bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid Color.Beige) ]
-     |> margined 10.0f
+     |> margined 30.0f
 
     let template color = 
         rectangle [ Fill (Solid color); Size (Size2F(40.0f, 20.0f)) ]
@@ -133,11 +133,15 @@ let main argv =
      |> bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid Color.Beige) ]
      |> padded 5.0f
 
-    let app = initialize (stacked template) [ List [Color.Red; Color.Blue; Color.Green] ]
+    let boxStack = 
+        initialize (stacked template) 
+            [ List [Color.Red; Color.Blue; Color.Green] ]
+     |> padded 0.0f
     
-    let app2 = 
+    let app = 
         box
-     |> overlayed innerBox
+     |> overlayed boxStack
+     //|> overlayed innerBox
      |> margined 10.0f
 
     let form = 
