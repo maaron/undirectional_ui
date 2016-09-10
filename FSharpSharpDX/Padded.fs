@@ -1,11 +1,23 @@
 ﻿module Padded
 
 open Ui
+open Arranged
 open SharpDX
 
-let padding thickness (outer: Size2F) (inner: Size2F) =
-    let size = (Size2F(inner.Width + thickness * 2.0f, inner.Height + thickness * 2.0f))
-    Arranged.translateCrop (Vector2(thickness, thickness)) size inner
+let padding thickness =
+    let doubleThickness = thickness * 2.0f
+    {
+    limit = 
+        fun available -> 
+            Size2F(
+                max (available.Width - doubleThickness) 0.0f,
+                max (available.Height - doubleThickness) 0.0f)
+
+    arrange =
+        fun available desired ->
+            let bounds = Size2F(desired.Width + doubleThickness, desired.Height + doubleThickness)
+            translateLayout (Vector2(thickness, thickness)) bounds desired
+    }
 
 type Event<'e> =
   | Padding of float32

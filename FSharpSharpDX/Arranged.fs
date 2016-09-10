@@ -50,14 +50,6 @@ let translateLayout vec bounds clip =
     inverse = Matrix3x2.Translation(-vec)
     }
 
-let translate vec = 
-    {
-    limit = id
-    arrange = 
-        fun available desired ->
-            translateLayout vec desired desired
-    }
-
 let center =
     {
     limit = id
@@ -80,20 +72,6 @@ let margin thickness =
             translateLayout (Vector2(thickness, thickness)) available desired
     }
 
-let padding thickness =
-    let doubleThickness = thickness * 2.0f
-    {
-    limit = 
-        fun available -> 
-            Size2F(
-                max (available.Width - doubleThickness) 0.0f,
-                max (available.Height - doubleThickness) 0.0f)
-
-    arrange =
-        fun available desired ->
-            let bounds = Size2F(desired.Width + doubleThickness, desired.Height + doubleThickness)
-            translateLayout (Vector2(thickness, thickness)) bounds desired
-    }
 
 type Event<'e> =
   | Arrange of Arranger

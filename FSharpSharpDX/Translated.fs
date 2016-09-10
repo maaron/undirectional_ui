@@ -8,8 +8,14 @@ type Event<'e> =
   | Translation of Vector2
   | Translated of 'e
 
-let translate vec outer inner = 
-    translateCrop vec inner inner
+
+let translate vec = 
+    {
+    limit = id
+    arrange = 
+        fun available desired ->
+            translateLayout vec desired desired
+    }
 
 let translated vec ui = 
     arranged (translate vec) ui

@@ -152,7 +152,7 @@ let main argv =
      |> padded 10.0f
 
     let form = 
-        makeForm boxStack
+        makeForm app
 
     Application.Run(form);
     
