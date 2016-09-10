@@ -19,6 +19,7 @@ open Overlayed
 open Mouseover
 open Bordered
 open Stacked
+open Virtualized
 
 type MainForm<'e, 'm>(ui: Ui<'e, 'm>) =
     inherit Form()
@@ -138,8 +139,8 @@ let main argv =
      |> padded 5.0f
 
     let boxStack = 
-        initialize (stacked template) 
-            [ List [Color.Red; Color.Blue; Color.Green] ]
+        initialize (stackVirtualized template) 
+            [ Items [Color.Red; Color.Blue; Color.Green] ]
      |> padded 10.0f
 
     let colorBordered color ui =
@@ -148,11 +149,11 @@ let main argv =
     let app = 
         mouseoverGreenBox
      |> overlayed boxStack
-     |> overlayed innerBox
+     //|> overlayed innerBox
      |> padded 10.0f
 
     let form = 
-        makeForm app
+        makeForm boxStack
 
     Application.Run(form);
     

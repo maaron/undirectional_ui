@@ -2,6 +2,7 @@
 module Stacked
 
 open SharpDX
+open Arranged
 open Translated
 open Ui
 
@@ -88,3 +89,19 @@ let stacked (template: 'p -> Ui<'e, 'm>) =
             | Bounds b -> broadcast (Bounds b) model
             | Resource r -> broadcast (Resource r) model
     }
+
+let stack (used: Size2F) (remaining: Size2F) =
+    let arranger =
+        {
+        limit = fun available -> remaining
+        arrange = fun available desired ->
+            Arranged.translateLayout (Vector2(0.0f, used.Height)) desired desired
+        }
+    let subtractor (desired: Size2F) = 
+        (
+        Size2F(used.Width, used.Height + desired.Height), 
+        Size2F(used.Width, remaining.Height - desired.Height)
+        )
+    (arranger, subtractor)
+
+let stackVirtualized ui = Virtualized.virtualized stack ui

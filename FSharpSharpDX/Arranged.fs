@@ -40,7 +40,7 @@ type Arranger =
     {
     limit: Size2F -> Size2F
     arrange: Size2F -> Size2F -> Layout
-}
+    }
 
 let translateLayout vec bounds clip =
     { 
