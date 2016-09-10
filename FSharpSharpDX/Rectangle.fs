@@ -30,7 +30,7 @@ let rectangleDefault: Ui<Event, Model> =
             brush = Brush.init }
         (model, Cmd.none)
 
-    bounds = fun m -> m.bounds
+    bounds = fun size model -> model.bounds
 
     view = 
         fun m rt -> 

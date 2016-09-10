@@ -34,18 +34,17 @@ let stacked (template: 'p -> Ui<'e, 'm>) =
     {
     init = ((Size2F.Zero, []), Cmd.none)
 
-    bounds = fst
-        #if false
+    bounds = 
+        fun size model -> 
             model 
          |> List.fold 
                 (fun accum (ui, item) -> 
-                    let itemSize = ui.bounds item
+                    let itemSize = ui.bounds size item
                     Size2F(
                         max accum.Width itemSize.Width,
                         accum.Height + itemSize.Height)
                 )
                 (Size2F(0.0f, 0.0f))
-        #endif
 
     view = 
         let renderItem target (ui, model) = ui.view model target
@@ -60,7 +59,7 @@ let stacked (template: 'p -> Ui<'e, 'm>) =
 
             let arrangeItems items = 
                 let (arrangedItems, (cmd, used)) = 
-                    items
+                    items 
                  |> scanMap
                       ( fun (i, used, remaining: RectangleF, cmds) ui -> 
                             let arranged = translated (Vector2(remaining.X, remaining.Y)) ui
@@ -78,17 +77,17 @@ let stacked (template: 'p -> Ui<'e, 'm>) =
             let updateItem (bounds, items) index e =
                 let (updatedItems, cmd) =
                     items
-                 |> List.mapi 
-                      ( fun i (ui, itemModel) -> 
-                            if i = index then 
-                                let (updated, cmd) = ui.update e itemModel
-                                (ui, (updated, mapCmd i cmd))
-                            else
-                                (ui, (itemModel, Cmd.none))
-                      )
-                 |> List.mapFold
-                      ( fun cmds (ui, (model, cmd)) -> ((ui, model), Cmd.batch [cmds; cmd]))
-                      Cmd.none
+             |> List.mapi 
+                  ( fun i (ui, itemModel) -> 
+                        if i = index then 
+                            let (updated, cmd) = ui.update e itemModel
+                            (ui, (updated, mapCmd i cmd))
+                        else
+                            (ui, (itemModel, Cmd.none))
+                  )
+             |> List.mapFold
+                  ( fun cmds (ui, (model, cmd)) -> ((ui, model), Cmd.batch [cmds; cmd]))
+                  Cmd.none
 
                 ((bounds, updatedItems), cmd)
 

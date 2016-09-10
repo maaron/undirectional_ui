@@ -34,7 +34,7 @@ let rectangleStrokeDefault: Ui.Ui<Event, Model> =
             }
         (model, Cmd.none)
 
-    bounds = fun model -> model.bounds
+    bounds = fun size model -> model.bounds
     
     view = 
         fun m rt -> 

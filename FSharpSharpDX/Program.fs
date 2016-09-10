@@ -107,10 +107,13 @@ let main argv =
     // The application
     let mapBool yes no b = if b then yes else no
     
-    let box = 
+    let greenBox = 
         rectangle 
           [ Fill (Solid Color.Green)
             Size (Size2F(200.0f, 200.0f)) ]
+
+    let mouseoverGreenBox =
+        greenBox
      |> onmouseover 
           (mapBool (sendEvents [Fill (Solid Color.Blue)])
                    (sendEvents [Fill (Solid Color.Green)]))
@@ -138,12 +141,15 @@ let main argv =
         initialize (stacked template) 
             [ List [Color.Red; Color.Blue; Color.Green] ]
      |> padded 10.0f
+
+    let colorBordered color ui =
+        bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid color) ] ui
     
     let app = 
-        box
+        mouseoverGreenBox
      |> overlayed boxStack
-     //|> overlayed innerBox
-     |> margined 10.0f
+     |> overlayed innerBox
+     |> padded 10.0f
 
     let form = 
         makeForm boxStack

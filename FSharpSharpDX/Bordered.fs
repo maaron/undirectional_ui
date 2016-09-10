@@ -62,7 +62,7 @@ let frame =
         let model = (rectmodel.bounds, rectmodel)
         (model, rectcmd)
 
-    bounds = fst
+    bounds = fun size -> fst
 
     view = fun model -> rectangleStrokeDefault.view (snd model)
 

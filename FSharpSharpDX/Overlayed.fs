@@ -16,24 +16,27 @@ type Event<'b, 't> =
 
 type Model<'m1, 'm2> =
     {
-    bounds: Size2F
+    available: Size2F
+    bottomSize: Size2F
     bottom: 'm1
     top: 'm2
     }
 
 let overlayed (top: Ui<'e2, 'm2>) (bottom: Ui<'e1, 'm1>): Ui<Event<'e1, 'e2>, Model<'m1, 'm2>> =
-  { init = 
+    {
+    init = 
         let (m1, cmd1) = bottom.init
         let (m2, cmd2) = top.init
         let model =
             {
-            bounds = Size2F.Zero
+            available = Size2F.Zero
+            bottomSize = bottom.bounds Size2F.Zero m1
             bottom = m1
             top = m2
             }
         (model, Cmd.batch [Cmd.map Bottom cmd1; Cmd.map Top cmd2])
 
-    bounds = fun model -> bottom.bounds model.bottom
+    bounds = fun size model -> bottom.bounds size model.bottom
 
     view = 
         fun model target ->
@@ -42,6 +45,10 @@ let overlayed (top: Ui<'e2, 'm2>) (bottom: Ui<'e1, 'm1>): Ui<Event<'e1, 'e2>, Mo
 
     update = 
         fun event model ->
+            let newAvailable = 
+                match event with
+                | Bounds b -> b
+                | _ -> model.available
             
             let (bottomModel2, bottomCmd) = 
                 match event with
@@ -51,12 +58,12 @@ let overlayed (top: Ui<'e2, 'm2>) (bottom: Ui<'e1, 'm1>): Ui<Event<'e1, 'e2>, Mo
                 | Resource r -> bottom.update (Resource r) model.bottom
                 | Bounds b -> bottom.update (Bounds b) model.bottom
 
-            let bounds2 = bottom.bounds bottomModel2
+            let newBottomSize = bottom.bounds newAvailable bottomModel2
             let (topModelSized, topModelCmd) =
-                if model.bounds = bounds2 then
+                if model.bottomSize = newBottomSize && model.available = newAvailable then
                     (model.top, Cmd.none)
                 else
-                    top.update (Bounds bounds2) model.top
+                    top.update (Bounds newBottomSize) model.top
 
             let (topModel2, topModelCmd2) =
                 match event with
@@ -67,5 +74,5 @@ let overlayed (top: Ui<'e2, 'm2>) (bottom: Ui<'e1, 'm1>): Ui<Event<'e1, 'e2>, Mo
                 | Bounds b -> (topModelSized, Cmd.none)
                 | Resource r -> top.update (Resource r) topModelSized
             
-            ({ bounds = bounds2; bottom = bottomModel2; top = topModel2 }, Cmd.batch [Cmd.map Bottom bottomCmd; Cmd.map Top topModelCmd; Cmd.map Top topModelCmd2])
-  }
+            ({ available = newAvailable; bottomSize = newBottomSize; bottom = bottomModel2; top = topModel2 }, Cmd.batch [Cmd.map Bottom bottomCmd; Cmd.map Top topModelCmd; Cmd.map Top topModelCmd2])
+    }

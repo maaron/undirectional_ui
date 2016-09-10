@@ -9,7 +9,7 @@ let augmentModel initAug update ui =
         let (sub, cmd) = ui.init
         ((initAug, sub), cmd)
 
-    bounds = fun (aug, model) -> ui.bounds model
+    bounds = fun size (aug, model) -> ui.bounds size model
     
     view = fun (aub, model) -> ui.view model
     

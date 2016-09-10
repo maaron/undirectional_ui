@@ -46,7 +46,7 @@ type InterfaceEvent<'e> =
 
 type Ui<'e, 'm> = {
     init: 'm * Cmd<'e>
-    bounds: 'm -> Size2F
+    bounds: Size2F -> 'm -> Size2F
     view: 'm -> Render
     update: InterfaceEvent<'e> -> 'm -> 'm * Cmd<'e>
 }
