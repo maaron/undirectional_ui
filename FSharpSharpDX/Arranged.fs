@@ -40,9 +40,6 @@ let translateCrop vec outerSize innerSize =
     inverse = Matrix3x2.Translation(-vec)
     }
 
-let translate vec outer inner = 
-    translateCrop vec inner inner
-
 let center (outer: Size2F) (inner: Size2F) =
     let x = outer.Width / 2.0f - inner.Width / 2.0f
     let y = outer.Height / 2.0f - inner.Height / 2.0f
@@ -52,10 +49,6 @@ let margin thickness (outer: Size2F) (inner: Size2F) =
     let width = max (outer.Width - thickness * 2.0f) 0.0f
     let height = max (outer.Height - thickness * 2.0f) 0.0f
     translateCrop (Vector2(thickness, thickness)) outer (Size2F(width, height))
-
-let padding thickness (outer: Size2F) (inner: Size2F) =
-    let size = (Size2F(inner.Width + thickness * 2.0f, inner.Height + thickness * 2.0f))
-    translateCrop (Vector2(thickness, thickness)) size inner
 
 let arranged (arrange: Arrange) (ui: Ui<'e, 'm>): Ui<Event<'e>, Model<'m>> = 
   { init = 
@@ -136,26 +129,6 @@ let onsize (update: Size2F -> InterfaceModify<'e, 'm>) ui =
             | _ -> ui.update event model
   }
 
-let translated vec = arranged (translate vec)
-
 let centered ui = arranged center ui
 
 let margined thickness = arranged (margin thickness)
-
-type PaddedEvent<'e> =
-  | Padding of float32
-  | Padded of 'e
-
-let padded thickness ui = 
-    arranged (padding thickness) ui
- |> Mapped.map
-        (fun e -> 
-            match e with
-            | Padding p -> Arrange (padding p)
-            | Padded e -> Arranged e
-        )
-        (fun e ->
-            match e with
-            | Arrange e -> Padding 0.0f
-            | Arranged e -> Padded e
-        )

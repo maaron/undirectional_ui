@@ -14,6 +14,7 @@ open Ui
 open Brush
 open Rectangle
 open Arranged
+open Padded
 open Overlayed
 open Mouseover
 open Bordered
@@ -145,7 +146,7 @@ let main argv =
      |> margined 10.0f
 
     let form = 
-        makeForm app
+        makeForm boxStack
 
     Application.Run(form);
     
