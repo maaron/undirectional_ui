@@ -3,6 +3,30 @@ module Mapped
 
 open Ui
 
+let cast (t: 'a) (o: obj) = o :?> 'a
+
+let mapEvent eventMap (ui: Ui<'a, 'b>) =
+    let (initial, cmd) = ui.init
+    { 
+    init = 
+        (initial :> obj, Cmd.none)
+    
+    bounds = fun available untyped -> ui.bounds available (cast initial untyped)
+    
+    view = fun untyped -> ui.view (cast initial untyped)
+    
+    update =
+        fun event untyped -> 
+            let model = cast initial untyped
+            let (updated, cmd) =
+                match event with
+                | Event e -> sendEvents (eventMap e) ui.update model
+                | Input i -> ui.update (Input i) model
+                | Bounds b -> ui.update (Bounds b) model
+                | Resource r -> ui.update (Resource r) model
+            (updated :> obj, Cmd.none)
+    }
+
 let map eventMap commandMap ui =
     { 
     init = 
