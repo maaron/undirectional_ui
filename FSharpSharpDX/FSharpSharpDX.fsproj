@@ -67,10 +67,13 @@
     <Compile Include="RectangleStroke.fs" />
     <Compile Include="Rectangle.fs" />
     <Compile Include="Arranged.fs" />
+    <Compile Include="Padded.fs" />
+    <Compile Include="Translated.fs" />
     <Compile Include="Overlayed.fs" />
     <Compile Include="Augmented.fs" />
     <Compile Include="Mouseover.fs" />
     <Compile Include="Bordered.fs" />
+    <Compile Include="Virtualized.fs" />
     <Compile Include="Stacked.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

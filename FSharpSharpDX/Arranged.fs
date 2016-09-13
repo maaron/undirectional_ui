@@ -43,19 +43,11 @@ type Arranger =
     }
 
 let translateLayout vec bounds clip =
-    {
+    { 
     bounds = bounds
     clip = clip
     transform = Matrix3x2.Translation(vec)
     inverse = Matrix3x2.Translation(-vec)
-    }
-
-let translate vec = 
-    {
-    limit = id
-    arrange = 
-        fun available desired ->
-            translateLayout vec desired desired
     }
 
 let center =
@@ -80,20 +72,6 @@ let margin thickness =
             translateLayout (Vector2(thickness, thickness)) available desired
     }
 
-let padding thickness =
-    let doubleThickness = thickness * 2.0f
-    {
-    limit = 
-        fun available -> 
-            Size2F(
-                max (available.Width - doubleThickness) 0.0f,
-                max (available.Height - doubleThickness) 0.0f)
-
-    arrange =
-        fun available desired ->
-            let bounds = Size2F(desired.Width + doubleThickness, desired.Height + doubleThickness)
-            translateLayout (Vector2(thickness, thickness)) bounds desired
-    }
 
 type Event<'e> =
   | Arrange of Arranger
@@ -190,26 +168,6 @@ let onsize (update: Size2F -> InterfaceModify<'e, 'm>) ui =
             | _ -> ui.update event model
   }
 
-let translated vec = arranged (translate vec)
-
 let centered ui = arranged center ui
 
 let margined thickness = arranged (margin thickness)
-
-type PaddedEvent<'e> =
-  | Padding of float32
-  | Padded of 'e
-
-let padded thickness ui = 
-    arranged (padding thickness) ui
- |> Mapped.map
-        (fun e -> 
-            match e with
-            | Padding p -> Arrange (padding p)
-            | Padded e -> Arranged e
-        )
-        (fun e ->
-            match e with
-            | Arrange e -> Padding 0.0f
-            | Arranged e -> Padded e
-        )

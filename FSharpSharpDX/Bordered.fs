@@ -13,6 +13,7 @@ open Ui
 open RectangleStroke
 open Overlayed
 open Arranged
+open Padded
 open Stroke
 open Mapped
 open Augmented

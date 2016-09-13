@@ -14,10 +14,12 @@ open Ui
 open Brush
 open Rectangle
 open Arranged
+open Padded
 open Overlayed
 open Mouseover
 open Bordered
 open Stacked
+open Virtualized
 
 type MainForm<'e, 'm>(ui: Ui<'e, 'm>) =
     inherit Form()
@@ -101,57 +103,100 @@ type MainForm<'e, 'm>(ui: Ui<'e, 'm>) =
 
 let makeForm (ui: Ui<'e, 'm>) = new MainForm<'e, 'm>(ui)
 
+// The application
+let mapBool yes no b = if b then yes else no
+    
+let greenBox = 
+    rectangle 
+        [ Fill (Solid Color.Green)
+          Size (Size2F(200.0f, 200.0f)) ]
+
+let mouseoverGreenBox =
+    greenBox
+    |> onmouseover 
+        (mapBool (sendEvents [Fill (Solid Color.Blue)])
+                (sendEvents [Fill (Solid Color.Green)]))
+    |> bordered 
+        [ Stroke.Event.Width 5.0f
+          Stroke.Event.Brush (Solid Color.Yellow)
+        ]
+
+let innerBox =
+    rectangle 
+        [ Fill (Solid Color.Red)
+          Size (Size2F(60.0f, 130.0f)) ]
+    |> bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid Color.Beige) ]
+    |> margined 30.0f
+
+let template color = 
+    rectangle [ Fill (Solid color); Size (Size2F(40.0f, 20.0f)) ]
+    |> onmouseover 
+        (mapBool (sendEvents [Fill (Solid Color.White)])
+                (sendEvents [Fill (Solid color)]))
+    |> bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid Color.Beige) ]
+    |> padded 5.0f
+
+let boxStack = 
+    initialize (stackVirtualized template) 
+        [ Items [Color.Red; Color.Blue; Color.Green] ]
+    |> padded 10.0f
+
+let colorBordered color ui =
+    bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid color) ] ui
+    
+let app = 
+    mouseoverGreenBox
+    |> overlayed boxStack
+    |> overlayed innerBox
+    |> padded 10.0f
+
+type Foo() =
+    member this.UI = app
+
+type FooRecord(ui) =
+    member this.Model = ui
+
+let appUi =
+    {
+    init = (FooRecord(fst app.init), Cmd.none)
+    bounds = fun size model -> app.bounds size model.Model
+    view = fun model -> app.view model.Model
+    update = fun event model -> 
+        let (uimodel, cmd) = app.update event model.Model
+        (FooRecord(uimodel), Cmd.none)
+    }
+
+let mappedApp = app |> Mapped.mapEvent (fun (e: unit) -> [])
+
+(*
+
+ - Resource models have side-effects and resource handles that complicate serialization, replay, 
+     etc.  It would be nice if we can abstract them away into a separate domain- perhaps part of 
+     the RenderTarget.  It maybe isn't a show-stopper, but it means that using "old" models 
+     requires the caller to carefully apply Create and Release resource events to ensure they are
+     in a usable state and released.  I have to think that a better way is to cache resource 
+     handles in a RenderTarget-specific data structure, and use reference-counting to know when 
+     resources can be released.  The resources must be collected in this data structure so that 
+     they can be released when the RenderTarget says it is necessary.  However, it must be done in
+     a way so as not to leak memory (i.e., probably weak references are in order) or require that
+     resource descriptors (immutable data structures describing the resource/properties) manage
+     resource lifetime explicitly.
+
+ - Encapsulating combinator-generated types in container types is awkward (can only be done in 
+     classes, not records).
+
+ - Combinators are thin, and rarely generate commands, but have to handle them correctly.
+
+ - Bounds functions are very often not interesting, but all combinators have to handle them 
+     correctly.  Maybe we can put this inside the view member?
+
+*)
+
 [<EntryPoint>]
 let main argv = 
-    // The application
-    let mapBool yes no b = if b then yes else no
-    
-    let greenBox = 
-        rectangle 
-          [ Fill (Solid Color.Green)
-            Size (Size2F(200.0f, 200.0f)) ]
-
-    let mouseoverGreenBox =
-        greenBox
-     |> onmouseover 
-          (mapBool (sendEvents [Fill (Solid Color.Blue)])
-                   (sendEvents [Fill (Solid Color.Green)]))
-     |> bordered 
-          [ Stroke.Event.Width 5.0f
-            Stroke.Event.Brush (Solid Color.Yellow)
-          ]
-
-    let innerBox =
-        rectangle 
-          [ Fill (Solid Color.Red)
-            Size (Size2F(60.0f, 130.0f)) ]
-     |> bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid Color.Beige) ]
-     |> margined 30.0f
-
-    let template color = 
-        rectangle [ Fill (Solid color); Size (Size2F(40.0f, 20.0f)) ]
-     |> onmouseover 
-          (mapBool (sendEvents [Fill (Solid Color.White)])
-                   (sendEvents [Fill (Solid color)]))
-     |> bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid Color.Beige) ]
-     |> padded 5.0f
-
-    let boxStack = 
-        initialize (stacked template) 
-            [ List [Color.Red; Color.Blue; Color.Green] ]
-     |> padded 10.0f
-
-    let colorBordered color ui =
-        bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid color) ] ui
-    
-    let app = 
-        mouseoverGreenBox
-     |> overlayed boxStack
-     |> overlayed innerBox
-     |> padded 10.0f
 
     let form = 
-        makeForm app
+        makeForm mappedApp
 
     Application.Run(form);
     
