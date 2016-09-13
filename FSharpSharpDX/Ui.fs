@@ -8,6 +8,7 @@ open SharpDX.Mathematics
 open SharpDX.Mathematics.Interop
 open SharpDX.Windows
 open Geometry
+open Draw
 
 type Render = RenderTarget -> unit
 
@@ -46,8 +47,7 @@ type InterfaceEvent<'e> =
 
 type Ui<'e, 'm> = {
     init: 'm * Cmd<'e>
-    bounds: Size2F -> 'm -> Size2F
-    view: 'm -> Render
+    view: 'm -> Drawing
     update: InterfaceEvent<'e> -> 'm -> 'm * Cmd<'e>
 }
 

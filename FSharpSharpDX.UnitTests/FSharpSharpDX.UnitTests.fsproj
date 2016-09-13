@@ -5,14 +5,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>809566c0-5ace-4d3a-a826-db909dfc7a57</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>FSharpSharpDX</RootNamespace>
-    <AssemblyName>FSharpSharpDX</AssemblyName>
+    <ProjectGuid>17648fdb-e20e-4161-8836-daf1dcacdbc7</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>FSharpSharpDX.UnitTests</RootNamespace>
+    <AssemblyName>FSharpSharpDX.UnitTests</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>FSharpSharpDX</Name>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Name>FSharpSharpDX.UnitTests</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -22,9 +22,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\FSharpSharpDX.XML</DocumentationFile>
-    <Prefer32Bit>true</Prefer32Bit>
+    <DocumentationFile>bin\Debug\FSharpSharpDX.UnitTests.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -33,9 +31,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\FSharpSharpDX.XML</DocumentationFile>
-    <Prefer32Bit>true</Prefer32Bit>
+    <DocumentationFile>bin\Release\FSharpSharpDX.UnitTests.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -54,28 +50,13 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
-    <None Include="App.config" />
-    <Content Include="packages.config" />
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Geometry.fs" />
-    <Compile Include="Primitive.fs" />
-    <Compile Include="Draw.fs" />
-    <None Include="Ui.fs" />
-    <None Include="Mapped.fs" />
-    <None Include="Resource.fs" />
-    <None Include="Arranged.fs" />
-    <None Include="Padded.fs" />
-    <None Include="Translated.fs" />
-    <None Include="Overlayed.fs" />
-    <None Include="Augmented.fs" />
-    <None Include="Mouseover.fs" />
-    <None Include="Bordered.fs" />
-    <None Include="Virtualized.fs" />
-    <None Include="Stacked.fs" />
-    <None Include="Size.fs" />
-    <None Include="Program.fs" />
+    <Compile Include="Library1.fs" />
+    <None Include="Script.fsx" />
+    <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
@@ -108,6 +89,11 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\FSharpSharpDX\FSharpSharpDX.fsproj">
+      <Name>FSharpSharpDX</Name>
+      <Project>{809566c0-5ace-4d3a-a826-db909dfc7a57}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
