@@ -45,8 +45,6 @@ let rectangleDefault: Ui<Event, Model> =
               ) |> ignore
 
     update =
-        //let updateProp prop m = { m with content = { m.content with properties = prop } }
-        //let updateResource res m = { m with content = { m.content with resource = res } }
         fun e m ->
             match e with
             | Event (Size s) -> ({ m with bounds = s }, Cmd.none)
