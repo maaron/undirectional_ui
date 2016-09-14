@@ -1,6 +1,7 @@
 ﻿module Ui
 
 open System
+open Cmd
 open SharpDX
 open SharpDX.Direct2D1
 open SharpDX.Direct3D
@@ -9,31 +10,10 @@ open SharpDX.Mathematics.Interop
 open SharpDX.Windows
 open Geometry
 open Draw
-
-type Render = RenderTarget -> unit
-
-type Cmd<'e> = 'e list * ((unit -> unit) -> unit)
-
-module Cmd =
-    let none: Cmd<'a> = 
-        ([], ignore)
-
-    let map (f: 'a -> 'b) (cmd: Cmd<'a>): Cmd<'b> = 
-        (List.map f (fst cmd), snd cmd)
-
-    let batch (cmds: Cmd<'a> list): Cmd<'a> = 
-        let events = [for cmd in cmds do 
-                      for a in (fst cmd) do 
-                      yield a]
-        let start callback = for c in cmds do snd c callback
-        (events, start)
-
-type ResourceEvent =
-    | Create of RenderTarget
-    | Release
+open Draw.Drawing
 
 type InputEvent = 
-    | MouseMove of Vector2
+    | MouseMove of Point
     | MouseEnter
     | MouseLeave
     | LeftButton of bool
@@ -41,8 +21,7 @@ type InputEvent =
 
 type InterfaceEvent<'e> =
     | Input of InputEvent
-    | Bounds of Size2F
-    | Resource of ResourceEvent
+    | Bounds of Point
     | Event of 'e
 
 type Ui<'e, 'm> = {
