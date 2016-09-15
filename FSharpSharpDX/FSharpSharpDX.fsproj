@@ -60,10 +60,11 @@
     <Compile Include="Geometry.fs" />
     <Compile Include="Primitive.fs" />
     <Compile Include="Draw.fs" />
-    <None Include="Ui.fs" />
+    <Compile Include="Cmd.fs" />
+    <Compile Include="Ui.fs" />
+    <Compile Include="Arranged.fs" />
     <None Include="Mapped.fs" />
     <None Include="Resource.fs" />
-    <None Include="Arranged.fs" />
     <None Include="Padded.fs" />
     <None Include="Translated.fs" />
     <None Include="Overlayed.fs" />

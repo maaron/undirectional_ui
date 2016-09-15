@@ -59,6 +59,12 @@ with
             bottomRight = Point.zero
         }
 
+    static member containsPoint point rectangle =
+        point.x >= rectangle.topLeft.x && 
+        point.x < rectangle.bottomRight.x &&
+        point.y >= rectangle.topLeft.y &&
+        point.y < rectangle.bottomRight.y
+
 let maxSize (s1: Size2F) (s2: Size2F) =
     Size2F(max s1.Width s2.Width, max s1.Height s2.Height)
 
