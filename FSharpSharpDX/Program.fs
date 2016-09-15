@@ -10,16 +10,20 @@ open SharpDX.Mathematics
 open SharpDX.Mathematics.Interop
 open SharpDX.Windows
 
+open Geometry
 open Ui
-open Brush
-open Rectangle
+open Cmd
 open Arranged
 open Padded
 open Overlayed
 open Mouseover
 open Bordered
+open Draw.Primitive
+open Rectangle
+(*
 open Stacked
 open Virtualized
+*)
 
 type MainForm<'e, 'm>(ui: Ui<'e, 'm>) =
     inherit Form()
@@ -30,7 +34,7 @@ type MainForm<'e, 'm>(ui: Ui<'e, 'm>) =
     let (model, cmd) = ui.init
     let mutable state = model
     let mutable view = ui.view model
-    let mutable resourcesAllocated = false
+    let resourceCache = Draw.Drawing.ResourceCache()
 
     member this.update event =
         let (newState, cmd) = ui.update event state
@@ -42,20 +46,21 @@ type MainForm<'e, 'm>(ui: Ui<'e, 'm>) =
         ()
 
     override this.OnPaint(e: PaintEventArgs) =
+        (*
         if not resourcesAllocated then 
             this.update (Resource (Create rt))
             resourcesAllocated <- true
+        *)
 
         rt.BeginDraw()
         rt.Clear(Nullable<RawColor4>(Color.op_Implicit(Color.Black)))
-        view rt
+        Draw.Drawing.render rt resourceCache view
         
         try
             rt.EndDraw()
         with
         | _ -> 
-            this.update (Resource Release)
-            resourcesAllocated <- false
+            resourceCache.ReleaseTargetResources()
 
     override this.OnHandleCreated(e: EventArgs) =
         base.OnHandleCreated(e)
@@ -77,27 +82,26 @@ type MainForm<'e, 'm>(ui: Ui<'e, 'm>) =
         rt <- new WindowRenderTarget(factory, properties, hwndProperties)
 
     override this.OnSizeChanged(e: EventArgs) =
-        let size = Size2(this.ClientSize.Width, this.ClientSize.Height)
-        let sizef = Size2F(float32(this.ClientSize.Width), float32(this.ClientSize.Height))
+        let sizef = { x = float32(this.ClientSize.Width); y =  float32(this.ClientSize.Height) }
         rt.Resize(Size2(this.ClientSize.Width, this.ClientSize.Height))
         this.update (Bounds sizef)
         ()
 
     override this.OnLoad(e: EventArgs) =
-        let size = Size2(this.ClientSize.Width, this.ClientSize.Height)
-        let sizef = Size2F(float32(this.ClientSize.Width), float32(this.ClientSize.Height))
+        let sizef = { x = float32(this.ClientSize.Width); y =  float32(this.ClientSize.Height) }
         rt.Resize(Size2(this.ClientSize.Width, this.ClientSize.Height))
         this.update (Bounds sizef)
         ()
 
     override this.OnMouseMove(e: MouseEventArgs) =
-        this.update (Input (MouseMove (Vector2(float32(e.X), float32(e.Y)))))
+        this.update (Input (MouseMove { x = float32(e.X); y = float32(e.Y) }))
 
     override this.OnMouseLeave(e: EventArgs) =
         this.update (Input MouseLeave)
 
     override this.OnClosed(e: EventArgs) =
-        this.update (Resource Release)
+        resourceCache.ReleaseTargetResources()
+        resourceCache.ReleaseFactoryResources()
         if not (rt = null) then rt.Dispose()
         factory.Dispose()
 
@@ -109,7 +113,7 @@ let mapBool yes no b = if b then yes else no
 let greenBox = 
     rectangle 
         [ Fill (Solid Color.Green)
-          Size (Size2F(200.0f, 200.0f)) ]
+          Size { x= 200.0f; y = 200.0f } ]
 
 let mouseoverGreenBox =
     greenBox
@@ -117,38 +121,38 @@ let mouseoverGreenBox =
         (mapBool (sendEvents [Fill (Solid Color.Blue)])
                 (sendEvents [Fill (Solid Color.Green)]))
     |> bordered 
-        [ Stroke.Event.Width 5.0f
-          Stroke.Event.Brush (Solid Color.Yellow)
+        [ Width 5.0f
+          Brush (Solid Color.Yellow)
         ]
 
 let innerBox =
     rectangle 
         [ Fill (Solid Color.Red)
-          Size (Size2F(60.0f, 130.0f)) ]
-    |> bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid Color.Beige) ]
+          Size { x = 60.0f; y = 130.0f } ]
+    |> bordered [ Width 5.0f; Brush (Solid Color.Beige) ]
     |> margined 30.0f
 
 let template color = 
-    rectangle [ Fill (Solid color); Size (Size2F(40.0f, 20.0f)) ]
+    rectangle [ Fill (Solid color); Size { x = 40.0f; y = 20.0f } ]
     |> onmouseover 
         (mapBool (sendEvents [Fill (Solid Color.White)])
                 (sendEvents [Fill (Solid color)]))
-    |> bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid Color.Beige) ]
+    |> bordered [ Width 5.0f; Brush (Solid Color.Beige) ]
     |> padded 5.0f
-
+(*
 let boxStack = 
     initialize (stackVirtualized template) 
         [ Items [Color.Red; Color.Blue; Color.Green] ]
     |> padded 10.0f
-
+*)
 let colorBordered color ui =
-    bordered [ Stroke.Event.Width 5.0f; Stroke.Event.Brush (Solid color) ] ui
+    bordered [ Width 5.0f; Brush (Solid color) ] ui
     
 let app = 
-    mouseoverGreenBox
-    |> overlayed boxStack
-    |> overlayed innerBox
-    |> padded 10.0f
+    rectangle 
+        [ Fill (Solid Color.Green)
+          Size { x= 200.0f; y = 200.0f } ]
+    |> bordered [ Width 5.0f; Brush (Solid Color.Beige) ]
 
 type Foo() =
     member this.UI = app
@@ -159,7 +163,6 @@ type FooRecord(ui) =
 let appUi =
     {
     init = (FooRecord(fst app.init), Cmd.none)
-    bounds = fun size model -> app.bounds size model.Model
     view = fun model -> app.view model.Model
     update = fun event model -> 
         let (uimodel, cmd) = app.update event model.Model
@@ -196,7 +199,7 @@ let mappedApp = app |> Mapped.mapEvent (fun (e: unit) -> [])
 let main argv = 
 
     let form = 
-        makeForm mappedApp
+        makeForm app
 
     Application.Run(form);
     

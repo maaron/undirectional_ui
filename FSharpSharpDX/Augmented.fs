@@ -1,6 +1,7 @@
 ﻿module Augmented
 
 open Ui
+open Cmd
 
 type Augmented<'e, 'm, 'a> = Ui<'e, 'a * 'm>
 
@@ -9,8 +10,6 @@ let augmentModel initAug update ui =
         let (sub, cmd) = ui.init
         ((initAug, sub), cmd)
 
-    bounds = fun size (aug, model) -> ui.bounds size model
-    
     view = fun (aub, model) -> ui.view model
     
     update = 

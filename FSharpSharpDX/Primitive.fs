@@ -3,6 +3,7 @@ namespace Draw.Primitive
 
 open SharpDX
 open SharpDX.Direct2D1
+open Geometry
 
 type StrokeStyle = {
     properties: SharpDX.Direct2D1.StrokeStyleProperties

@@ -76,6 +76,19 @@ let margin thickness =
                 { topLeft = Point.zero; bottomRight = desired }
     }
 
+let identityLayout size =
+    {
+    size = size
+    clip = None
+    transform = Matrix3x2.Identity
+    inverse = Matrix3x2.Identity
+    }
+
+let identityArranger =
+    {
+    limit = id
+    arrange = fun available desired -> identityLayout desired
+    }
 
 type Model<'m> = {
     available: Point

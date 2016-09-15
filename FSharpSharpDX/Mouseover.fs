@@ -3,16 +3,19 @@
 open SharpDX
 open Ui
 open Augmented
+open Geometry
 
 let mouseovered ui =
     let aug event model =
         let ((wasOver, availableSize), uimodel) = model
         match event with
         | Input (MouseMove mouse) -> 
-            let bounds = ui.bounds availableSize (snd model)
-            let isOver = mouse.X >= 0.0f && mouse.X < bounds.Width 
-                        && mouse.Y >= 0.0f && mouse.Y < bounds.Height
-            ((isOver, availableSize), snd model)
+            let drawing = ui.view uimodel
+            let isOver = 
+                match drawing.clip with
+                | Some clip -> Rectangle.containsPoint mouse clip
+                | None -> Rectangle.containsPoint mouse (Rectangle.fromPoints Point.zero drawing.size)
+            ((isOver, availableSize), uimodel)
             
         | Input MouseLeave -> ((false, availableSize), snd model)
 
@@ -20,7 +23,7 @@ let mouseovered ui =
 
         | _ -> model
 
-    augmentModel (false, Size2F.Zero) aug ui
+    augmentModel (false, Point.zero) aug ui
 
 let onmouseover update ui =
     mouseovered ui

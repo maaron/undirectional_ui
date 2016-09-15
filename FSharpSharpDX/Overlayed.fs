@@ -9,6 +9,9 @@ open SharpDX.Mathematics.Interop
 open SharpDX.Windows
 
 open Ui
+open Cmd
+open Geometry
+open Draw.Drawing
 
 type Event<'b, 't> =
   | Bottom of 'b
@@ -16,10 +19,10 @@ type Event<'b, 't> =
 
 type Model<'m1, 'm2> =
     {
-    available: Size2F
-    bottomSize: Size2F
+    available: Point
     bottom: 'm1
     top: 'm2
+    bottomDrawing: Drawing
     }
 
 let overlayed (top: Ui<'e2, 'm2>) (bottom: Ui<'e1, 'm1>): Ui<Event<'e1, 'e2>, Model<'m1, 'm2>> =
@@ -29,19 +32,25 @@ let overlayed (top: Ui<'e2, 'm2>) (bottom: Ui<'e1, 'm1>): Ui<Event<'e1, 'e2>, Mo
         let (m2, cmd2) = top.init
         let model =
             {
-            available = Size2F.Zero
-            bottomSize = bottom.bounds Size2F.Zero m1
+            available = Point.zero
             bottom = m1
             top = m2
+            bottomDrawing = bottom.view m1
             }
         (model, Cmd.batch [Cmd.map Bottom cmd1; Cmd.map Top cmd2])
 
-    bounds = fun size model -> bottom.bounds size model.bottom
-
     view = 
-        fun model target ->
-            bottom.view model.bottom target
-            top.view model.top target
+        fun model ->
+            {
+                size = model.bottomDrawing.size
+                clip = None
+                transform = Matrix3x2.Identity
+                commands = 
+                    [
+                    Drawing (bottom.view model.bottom)
+                    Drawing model.bottomDrawing
+                    ]
+            }
 
     update = 
         fun event model ->
@@ -55,15 +64,14 @@ let overlayed (top: Ui<'e2, 'm2>) (bottom: Ui<'e1, 'm1>): Ui<Event<'e1, 'e2>, Mo
                 | Event (Bottom bottomEvent) -> bottom.update (Event bottomEvent) model.bottom
                 | Event (Top topEvent) -> (model.bottom, Cmd.none)
                 | Input i -> bottom.update (Input i) model.bottom
-                | Resource r -> bottom.update (Resource r) model.bottom
                 | Bounds b -> bottom.update (Bounds b) model.bottom
 
-            let newBottomSize = bottom.bounds newAvailable bottomModel2
+            let newBottom = bottom.view bottomModel2
             let (topModelSized, topModelCmd) =
-                if model.bottomSize = newBottomSize && model.available = newAvailable then
+                if model.bottomDrawing.size = newBottom.size && model.available = newAvailable then
                     (model.top, Cmd.none)
                 else
-                    top.update (Bounds newBottomSize) model.top
+                    top.update (Bounds newBottom.size) model.top
 
             let (topModel2, topModelCmd2) =
                 match event with
@@ -72,7 +80,19 @@ let overlayed (top: Ui<'e2, 'm2>) (bottom: Ui<'e1, 'm1>): Ui<Event<'e1, 'e2>, Mo
                 | Input i -> top.update (Input i) topModelSized
                 // Bounds for the overlayed UI are determined by the UI underneath
                 | Bounds b -> (topModelSized, Cmd.none)
-                | Resource r -> top.update (Resource r) topModelSized
-            
-            ({ available = newAvailable; bottomSize = newBottomSize; bottom = bottomModel2; top = topModel2 }, Cmd.batch [Cmd.map Bottom bottomCmd; Cmd.map Top topModelCmd; Cmd.map Top topModelCmd2])
+
+            (
+                {
+                    available = newAvailable
+                    bottom = bottomModel2
+                    top = topModel2
+                    bottomDrawing = newBottom
+                }, 
+                Cmd.batch 
+                    [
+                    Cmd.map Bottom bottomCmd
+                    Cmd.map Top topModelCmd
+                    Cmd.map Top topModelCmd2
+                    ]
+            )
     }

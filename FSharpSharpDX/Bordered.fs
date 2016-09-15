@@ -7,20 +7,24 @@ open SharpDX.Direct3D
 open SharpDX.Mathematics
 open SharpDX.Mathematics.Interop
 open SharpDX.Windows
-open Brush
 
+open Draw.Primitive
+open Draw.Drawing
 open Ui
-open RectangleStroke
+open Cmd
 open Overlayed
 open Arranged
 open Padded
-open Stroke
 open Mapped
 open Augmented
+open Arranged
+open Geometry
 
 type Event<'a> =
-  | Border of Stroke.Event
-  | BorderContent of 'a
+  | Width of float32
+  | Brush of Brush
+  | Style of StrokeStyle option
+  | Content of 'a
 
 #if false
 let bordered ui =
@@ -53,56 +57,71 @@ let bordered ui =
   }
 #endif
 
-type FrameEvent = float32
+type Model<'e, 'm> = {
+    stroke: Stroke
+    subUi: Ui<'e, 'm>
+    subModel: 'm
+    subDrawing: Drawing
+}
 
-let frame =
+let borderedDefault ui =
     {
     init = 
-        let (rectmodel, rectcmd) = rectangleStrokeDefault.init
-        let model = (rectmodel.bounds, rectmodel)
-        (model, rectcmd)
+        let arrangedUi = arranged identityArranger ui
+        let (sub, cmd) = arrangedUi.init
+        let model = 
+            {
+                stroke =
+                    {
+                    brush = Solid Color.Transparent
+                    width = 0.0f
+                    style = None
+                    }
+                subUi = arrangedUi
+                subModel = sub
+                subDrawing = arrangedUi.view sub
+            }
+        (model, Cmd.map Content cmd)
 
-    bounds = fun size -> fst
-
-    view = fun model -> rectangleStrokeDefault.view (snd model)
+    view =
+        fun { stroke = stroke; subUi = subUi; subDrawing = subDrawing } ->
+            let width = stroke.width
+            let doubleWidth = width + 2.0f
+            let halfWidth = width / 2.0f
+            { 
+                size = subDrawing.size
+                clip = None
+                transform = Matrix3x2.Identity
+                commands = 
+                    [
+                    Drawing subDrawing
+                    RectangleStroke 
+                        {
+                        geometry = 
+                            {
+                                topLeft = { x = halfWidth; y = halfWidth }
+                                bottomRight = { x = subDrawing.size.x - halfWidth; y = subDrawing.size.y - halfWidth }
+                            }
+                        stroke = stroke
+                        }
+                    ]
+            }
 
     update =
         fun event model ->
-            let (width, rect) = model
+            let updateSub event model =
+                let (subModel2, cmd) = model.subUi.update event model.subModel
+                let subDrawing2 = model.subUi.view subModel2
+                ({ model with subModel = subModel2; subDrawing = subDrawing2 }, Cmd.map Content cmd)
+
             match event with
-            // TODO
-            | Bounds b -> (model, Cmd.none)
-            | _ -> (model, Cmd.none)
+            | Event (Width w) -> ({ model with stroke = { model.stroke with width = w }; subUi = padded w ui }, Cmd.none)
+            | Event (Brush b) -> ({ model with stroke = { model.stroke with brush = b } }, Cmd.none)
+            | Event (Style s) -> ({ model with stroke = { model.stroke with style = s } }, Cmd.none)
+            | Event (Content c) -> updateSub (Event c) model
+            | Input i -> updateSub (Input i) model
+            | Bounds b -> updateSub (Bounds b) model
+                
     }
 
-let bordered props ui =
-    let width = 
-        defaultArg (props |> List.tryPick (fun p -> match p with | Width w -> Some w | _ -> None)) 0.0f
-    
-    let border = 
-        initialize rectangleStrokeDefault (props |> List.map (fun p -> Stroke p))
-     |> onsize 
-          ( fun s -> 
-                let halfWidth = width / 2.0f
-                sendEvents 
-                  [ Size (Size2F(s.Width - halfWidth, s.Height - halfWidth))
-                    TopLeft (Vector2(halfWidth, halfWidth))
-                  ]
-          )
-
-    ui
- |> padded width
- |> overlayed border
- #if false
- |> mapMany
-        (fun e -> 
-            match e with 
-            | Border (Width w) -> [Top (Stroke (Width w)); Bottom (Padding w)]
-            | Border b -> [Top (Stroke b)]
-            | BorderContent c -> [Top c])
-        (fun e ->
-            match e with
-            | Bottom (Padded b) -> Border b
-            | Bottom (Padding p) -> Border (Width p)
-            | Top c -> BorderContent c)
-#endif
+let bordered events ui = initialize (borderedDefault ui) events
