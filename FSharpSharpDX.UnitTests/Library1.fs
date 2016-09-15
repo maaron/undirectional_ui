@@ -8,9 +8,9 @@ open Geometry
 
 [<TestClass>]
 type DrawingTests() = 
-    
+
     [<TestMethod>]
-    member x.sizeofTests() =
+    member x.``sizeof RectangleFill``() =
         Assert.IsTrue(
             sizeof 
                 { 
@@ -26,7 +26,7 @@ type DrawingTests() =
                     clip = Rectangle.infinity
                     commands = 
                     [
-                    Command.Rectangle 
+                    RectangleFill 
                         {
                         geometry = 
                             { 
@@ -43,14 +43,14 @@ type DrawingTests() =
                 } = { x = 1.0f; y = 2.0f })
 
     [<TestMethod>]
-    member x.sizeofTests2() =
+    member x.``sizeof RectangleStroke``() =
         let drawing = 
             { 
             transform = Matrix3x2.Identity
             clip = Rectangle.infinity
             commands = 
                 [
-                Command.RectangleStroke 
+                RectangleStroke 
                     {
                     geometry = 
                         { 
@@ -73,6 +73,5 @@ type DrawingTests() =
 
         let expected = { x = 2.0f; y = 3.0f }
         let actual = sizeof drawing
-        let test = expected = actual
-        
-        Assert.IsTrue(test)
+
+        Assert.IsTrue((expected = actual))

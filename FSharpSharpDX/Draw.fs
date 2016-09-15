@@ -14,14 +14,14 @@ type Drawing = {
     commands: Command list
 }
 and Command =
-    | Rectangle of RectangleFill
+    | RectangleFill of RectangleFill
     | RectangleStroke of RectangleStroke
     | Drawing of Drawing
 
 let rec sizeof drawing =
     let sizeofCommand transform clip accum command =
         match command with
-        | Rectangle r -> 
+        | RectangleFill r -> 
             let bottomRight = (Rectangle.transformBounds transform r.geometry).bottomRight
             Point.maxCoords (Point.minCoords bottomRight clip.bottomRight) accum
         
