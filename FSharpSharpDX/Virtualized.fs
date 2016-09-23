@@ -4,45 +4,80 @@ module Virtualized
 open SharpDX
 open Arranged
 open Translated
+open Draw.Drawing
+open Geometry
 open Ui
+open Cmd
 
 type Event<'e, 'p> =
   | Items of 'p list
   | Item of int * 'e
 
-type Model<'e, 't, 'm> = 
-    {
-    bounds: Size2F
-    size: Size2F
-    items: 't list
-    uis: (Ui<Arranged.Event<'e>, Arranged.Model<'m>> * Arranged.Model<'m>) list
-    }
+type RemainderArrangement = {
+    arrangement: Arrangement
+    remainder: Arrangement
+}
 
-type Subtractor = Size2F -> (Size2F * Size2F)
-type Reducer = Size2F -> Size2F -> Arranger * Subtractor
+type RemainderArranger = Point -> Point -> RemainderArrangement
+
 type Generator<'t, 'e, 'm> = 't -> Ui<'e, 'm>
 
-let virtualized reducer (template: Generator<'t, 'e, 'm>) =
+type ItemArrangement<'e, 'm> = {
+    model: Arranged.Model<'m>
+    ui: Ui<'e, 'm>
+    arranged: Ui<'e, Arranged.Model<'m>>
+    drawing: Drawing
+}
+
+type ItemContainer<'e, 't, 'm> = {
+    item: 't
+    arrangement: ItemArrangement<'e, 'm>
+}
+
+type Model<'e, 't, 'm> = {
+    available: Point
+    size: Point
+    items: ItemContainer<'e, 't, 'm> list
+}
+
+let virtualized (arranger: RemainderArranger) (generate: Generator<'t, 'e, 'm>) =
     {
     init = 
         (
             {
-            bounds = Size2F.Zero
-            size = Size2F.Zero
+            available = Point.zero
+            size = Point.zero
             items = []
-            uis = []
             },
             Cmd.none
         )
 
-    bounds = 
-        fun size model -> model.size
-
     view = 
-        let renderItem target (ui, itemModel) = ui.view itemModel target
-        fun model target -> model.uis |> List.iter (renderItem target)
+        fun model ->
+            {
+                size = model.size
+                clip = None
+                transform = Matrix3x2.Identity
+                commands = model.items |> List.map (fun item -> item.arrangement.drawing)
+            }
 
     update =
+        // Implementation Summary:
+        // Bounds -> re-draw
+        // Input -> broadcast, re-draw items following any item whose drawize size changes
+        // Event (Items items) -> re-generate, re-draw
+        // Event (Item i) -> skip items before i, update and re-draw items[i], re-draw rest if items[i] drawing size changes
+
+        let updateBounds model bounds =
+            model.items |> List.mapFold
+                (fun remaining (itemData, itemUi) -> 
+                    match itemUi with
+                    | Some (itemModel, itemDrawing) -> 
+                        let (newItemModel, itemCmd) = translated remaining.topLeft
+                    (item, remaining)
+                )
+                (Rectangle.fromPoints Point.zero bounds)
+
         fun event model ->
             let mapCmd index cmd = Cmd.map (fun e -> Item (index, e)) cmd
 
@@ -115,9 +150,8 @@ let virtualized reducer (template: Generator<'t, 'e, 'm>) =
                 ({ model with uis = items }, cmds)
 
             match event with
-            | Event (Items items) -> arrangeItems items
+            | Event (Items items) -> updateItems model items
             | Event (Item (index, e)) -> updateItem model index (Event e)
             | Input i -> broadcast (Input i) model
-            | Bounds b -> broadcast (Bounds b) model
-            | Resource r -> broadcast (Resource r) model
+            | Bounds b -> updateBounds model b
     }

@@ -71,9 +71,10 @@
     <Compile Include="Augmented.fs" />
     <Compile Include="Mouseover.fs" />
     <Compile Include="Bordered.fs" />
-    <None Include="Virtualized.fs" />
+    <Compile Include="Virtualized.fs" />
     <None Include="Stacked.fs" />
     <Compile Include="Program.fs" />
+    <Compile Include="Reduced.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
