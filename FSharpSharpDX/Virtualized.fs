@@ -18,14 +18,17 @@ type RemainderArrangement = {
     remainder: Arrangement
 }
 
-type RemainderArranger = Point -> Point -> RemainderArrangement
+type RemainderLayout = {
+    limit: Point -> Point
+    arrangeRemainder: Point -> Point -> RemainderArrangement
+}
 
 type Generator<'t, 'e, 'm> = 't -> Ui<'e, 'm>
 
 type ItemArrangement<'e, 'm> = {
-    model: Arranged.Model<'m>
+    model: 'm
     ui: Ui<'e, 'm>
-    arranged: Ui<'e, Arranged.Model<'m>>
+    arrangement: RemainderArrangement
     drawing: Drawing
 }
 
@@ -40,7 +43,13 @@ type Model<'e, 't, 'm> = {
     items: ItemContainer<'e, 't, 'm> list
 }
 
-let virtualized (arranger: RemainderArranger) (generate: Generator<'t, 'e, 'm>) =
+let layoutFromRemainder remainderLayout =
+    {
+    limit = remainderLayout.limit
+    arrange = (fun available desired -> (remainderLayout.arrangeRemainder available desired).arrangement)
+    }
+
+let virtualized (layout: RemainderLayout) (generate: Generator<'t, 'e, 'm>) =
     {
     init = 
         (
@@ -58,7 +67,10 @@ let virtualized (arranger: RemainderArranger) (generate: Generator<'t, 'e, 'm>) 
                 size = model.size
                 clip = None
                 transform = Matrix3x2.Identity
-                commands = model.items |> List.map (fun item -> item.arrangement.drawing)
+                commands = 
+                    model.items 
+                    |> List.choose (fun item -> item.arrangement)
+                    |> List.map (fun a -> Drawing a.drawing)
             }
 
     update =
@@ -68,6 +80,26 @@ let virtualized (arranger: RemainderArranger) (generate: Generator<'t, 'e, 'm>) 
         // Event (Items items) -> re-generate, re-draw
         // Event (Item i) -> skip items before i, update and re-draw items[i], re-draw rest if items[i] drawing size changes
 
+        let mapCmd index cmd = Cmd.map (fun e -> Item (index, e)) cmd
+
+        let redrawItem (remaining: Rectangle) itemContainer =
+            match itemContainer.arrangement with
+            | Some currentArrangement -> (itemContainer, Cmd.none)
+            | None ->
+                let itemUi = generate itemContainer.item 
+                let (uiModel, initCmd) = itemUi.init
+                let itemDrawing = itemUi.view uiModel
+                let limit = layout.limit remaining.size
+                let itemArrangement = 
+                    Some 
+                        {
+                        model = uiModel
+                        ui = itemUi
+                        arrangement = remainderArrangement
+                        drawing = itemDrawing
+                        }
+                ({ itemContainer with arrangement = itemArrangement }, initCmd)
+        
         let redraw model =
             let initialState = 
                 {
@@ -77,102 +109,42 @@ let virtualized (arranger: RemainderArranger) (generate: Generator<'t, 'e, 'm>) 
                 inverse = Matrix3x2.Identity
                 }
 
-            let mapFolder (remaining, size, cmd) itemContainer =
-                // If we haven't generated the UI yet, generate a model.
-                // Do the same thing as the arranged combinator, but apply the remaining 
-                // arrangement and save the new remaining arrangement for the next iteration.
-                // 
-                ({ itemContainer with arrangement = arrangement }, newState)
+            let mapFolder (remaining: Arrangement, bounds, cmd) itemContainer =
+                if not (Point.isEmpty remaining.size) then 
+                    (itemContainer, (remaining, bounds, cmd))
+                else
+                    match itemContainer.arrangement with
+                    | Some currentArrangement -> (itemContainer, (remaining, bounds, cmd))
+                    | None ->
+                        let itemUi = generate itemContainer.item 
+                        let (uiModel, initCmd) = itemUi.init
+                        let itemDrawing = itemUi.view uiModel
+                        let remainderArrangement = arranger remaining.size itemDrawing.size
+                        let arrangement =
+                            {
+                            model = uiModel
+                            ui = itemUi
+                            arrangement = remainderArrangement
+                            drawing = itemDrawing
+                            }
+                        let newRemaining = remainderArrangement.remainder
+                        let newBounds = 
+                            let itemBounds = 
+                                Rectangle.fromPoints Point.zero remainderArrangement.arrangement.size
+                                |> Rectangle.transformBounds remainderArrangement.arrangement.transform
+                            if bounds = Rectangle.zero then itemBounds
+                            else Rectangle.union bounds itemBounds
+                        ({ itemContainer with arrangement = Some arrangement }, (newRemaining, newBounds, Cmd.batch [cmd; initCmd]))
 
-            let (items, (finalState, finalSize)) = 
-                model.items |> List.mapFold mapFolder (initialState, Point.zero, Cmd.none)
+            let (items, (finalState, finalSize, cmd)) = 
+                model.items |> List.mapFold mapFolder (initialState, Rectangle.zero, Cmd.none)
 
-            { model with items = items; size = finalSize }
-
-        let updateBounds model bounds =
-            model.items |> List.mapFold
-                (fun remaining (itemData, itemUi) -> 
-                    match itemUi with
-                    | Some (itemModel, itemDrawing) -> 
-                        let (newItemModel, itemCmd) = translated remaining.topLeft
-                    (item, remaining)
-                )
-                (Rectangle.fromPoints Point.zero bounds)
+            ({ model with items = items; size = finalSize.size }, cmd)
 
         fun event model ->
-            let mapCmd index cmd = Cmd.map (fun e -> Item (index, e)) cmd
-
-            let arrangeItem arranger item =
-                let arranged = arranged arranger item
-                let (model, cmd) = arranged.init
-                let size = model.layout.bounds
-                (arranged, model, cmd, size)
-
-            let arrangeItems items = 
-                let opt =
-                    items
-                 |> Seq.scan
-                      ( fun (uis, index, used, (remaining: Size2F), cmds, isDone) item ->
-                            let (arranger, subtractor) = reducer used remaining
-                            let (itemUi, itemModel, cmd, size) = arrangeItem arranger (template item)
-                            let (newUsed, newRemaining) = subtractor size
-                            (
-                                (itemUi, itemModel) :: uis, 
-                                index + 1, 
-                                newUsed, 
-                                newRemaining,
-                                Cmd.batch [cmds; mapCmd index cmd],
-                                newRemaining.Width > 0.0f && newRemaining.Height > 0.0f
-                            )
-                      )
-                      ([], 0, Size2F.Zero, model.bounds, Cmd.none, false)
-                 |> Seq.takeWhile (fun (_, _, _, _, _, isDone) -> not isDone)
-                 |> Seq.tryLast
-
-                match opt with
-                | Some (uis, count, used, remaining, cmd, isDone) ->
-                    (
-                        {
-                        bounds = model.bounds
-                        size = used
-                        items = items
-                        uis = List.rev uis
-                        },
-                        cmd
-                    )
-                | None -> ({ bounds = Size2F.Zero; size = Size2F.Zero; items = items; uis = []}, Cmd.none)
-
-            let updateItem model index e =
-                let (uis, cmd) =
-                    model.uis 
-                 |> List.mapi 
-                      ( fun i (ui, itemModel) -> 
-                            if i = index then 
-                                let (updated, cmd) = ui.update e itemModel
-                                (ui, (updated, mapCmd i cmd))
-                            else
-                                (ui, (itemModel, Cmd.none))
-                      )
-                 |> List.mapFold
-                      ( fun cmds (ui, (model, cmd)) -> 
-                            ((ui, model), Cmd.batch [cmds; cmd])
-                      )
-                      Cmd.none
-                ({ model with uis = uis}, cmd)
-
-            let broadcast e model =
-                let (items, (count, cmds)) =
-                    model.uis
-                 |> List.mapFold
-                      ( fun (i, cmds) (ui, itemModel) -> 
-                            let (updated, cmd) = ui.update e itemModel
-                            ((ui, updated), (i + 1, Cmd.batch [cmds; mapCmd i cmd])))
-                      (0, Cmd.none)
-                ({ model with uis = items }, cmds)
-
             match event with
-            | Event (Items items) -> updateItems model items
-            | Event (Item (index, e)) -> updateItem model index (Event e)
-            | Input i -> broadcast (Input i) model
-            | Bounds b -> updateBounds model b
+            //| Event (Items items) -> updateItems model items
+            //| Event (Item (index, e)) -> updateItem model index (Event e)
+            //| Input i -> broadcast (Input i) model
+            | Bounds b -> redraw { model with available = b }
     }
