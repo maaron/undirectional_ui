@@ -31,7 +31,7 @@ type ItemArrangement<'e, 'm> = {
 
 type ItemContainer<'e, 't, 'm> = {
     item: 't
-    arrangement: ItemArrangement<'e, 'm>
+    arrangement: ItemArrangement<'e, 'm> option
 }
 
 type Model<'e, 't, 'm> = {
@@ -67,6 +67,27 @@ let virtualized (arranger: RemainderArranger) (generate: Generator<'t, 'e, 'm>) 
         // Input -> broadcast, re-draw items following any item whose drawize size changes
         // Event (Items items) -> re-generate, re-draw
         // Event (Item i) -> skip items before i, update and re-draw items[i], re-draw rest if items[i] drawing size changes
+
+        let redraw model =
+            let initialState = 
+                {
+                size = model.available
+                clip = None
+                transform = Matrix3x2.Identity
+                inverse = Matrix3x2.Identity
+                }
+
+            let mapFolder (remaining, size, cmd) itemContainer =
+                // If we haven't generated the UI yet, generate a model.
+                // Do the same thing as the arranged combinator, but apply the remaining 
+                // arrangement and save the new remaining arrangement for the next iteration.
+                // 
+                ({ itemContainer with arrangement = arrangement }, newState)
+
+            let (items, (finalState, finalSize)) = 
+                model.items |> List.mapFold mapFolder (initialState, Point.zero, Cmd.none)
+
+            { model with items = items; size = finalSize }
 
         let updateBounds model bounds =
             model.items |> List.mapFold
