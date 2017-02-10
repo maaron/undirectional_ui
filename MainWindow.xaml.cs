@@ -17,6 +17,10 @@ using System.Collections.Immutable;
 
 namespace TodoElmStyle
 {
+    public class FooTemplate<T> : ContentControl
+    {
+    }
+
     public class Todos
     {
         public readonly ImmutableList<TodoItem> TodoItems;

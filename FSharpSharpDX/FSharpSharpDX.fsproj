@@ -75,6 +75,7 @@
     <None Include="Stacked.fs" />
     <Compile Include="Program.fs" />
     <Compile Include="Reduced.fs" />
+    <None Include="Monoid.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
