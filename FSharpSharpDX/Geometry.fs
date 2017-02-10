@@ -14,6 +14,7 @@ with
     static member transform matrix point = 
         let vector = Matrix3x2.TransformPoint(matrix, Vector2(point.x, point.y))
         { x = vector.X; y = vector.Y }
+    static member isEmpty p = p.x <= 0.0f || p.y <= 0.0f
 
 type Rectangle = 
     { topLeft: Point
@@ -23,6 +24,8 @@ with
     member this.bottomLeft = {x = this.topLeft.x; y = this.bottomRight.y }
     
     member this.topRight = {x = this.bottomRight.x; y = this.topLeft.y }
+
+    member this.size = { x = this.bottomRight.x - this.topLeft.x; y = this.bottomRight.y - this.topLeft.y }
     
     static member fromPoints p1 p2 =
         { 

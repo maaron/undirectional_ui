@@ -93,12 +93,13 @@ let identityArranger =
 type Model<'m> = {
     available: Point
     arrangement: Arrangement
-    child: 'm * Drawing
+    childModel: 'm
+    childDrawing: Drawing
 }
 
 let arranged (arranger: Layout) (ui: Ui<'e, 'm>): Ui<'e, Model<'m>> = 
   { init = 
-        let (child, cmd) = ui.init
+        let (childModel, cmd) = ui.init
         let model =
             {
             available = Point.zero
@@ -109,7 +110,8 @@ let arranged (arranger: Layout) (ui: Ui<'e, 'm>): Ui<'e, Model<'m>> =
                     transform = Matrix3x2.Identity
                     inverse = Matrix3x2.Identity
                 }
-            child = (child, ui.view child)
+            childModel = childModel
+            childDrawing = ui.view childModel
             }
         (model, cmd) 
 
@@ -119,47 +121,47 @@ let arranged (arranger: Layout) (ui: Ui<'e, 'm>): Ui<'e, Model<'m>> =
                 size = model.arrangement.size
                 clip = model.arrangement.clip
                 transform = model.arrangement.transform
-                commands = [Command.Drawing (snd model.child)]
+                commands = [Command.Drawing model.childDrawing]
             }
 
     update =
-        fun e m -> 
-            let updateArrangement model (child, cmd) =
-                let drawing = ui.view child
-                (
-                    { model with 
-                        arrangement = arranger.arrange model.available drawing.size
-                        child = (child, drawing)
-                    },
-                    cmd
-                )
+        let updateArrangement model (child, cmd) =
+            let drawing = ui.view child
+            (
+                { model with 
+                    arrangement = arranger.arrange model.available drawing.size
+                    childDrawing = drawing
+                },
+                cmd
+            )
 
-            match e with
+        fun event model -> 
+            match event with
             | Input (MouseMove p) -> 
-                let pmapped = Point.transform m.arrangement.inverse p
+                let pmapped = Point.transform model.arrangement.inverse p
 
                 let isClipped = 
-                    match m.arrangement.clip with
+                    match model.arrangement.clip with
                     | Some r -> Rectangle.containsPoint pmapped r |> not
                     | None -> false
                 
                 let mappedEvent =
                     if isClipped && 
-                       Rectangle.containsPoint pmapped (Rectangle.fromPoints Point.zero m.arrangement.size) then
+                       Rectangle.containsPoint pmapped (Rectangle.fromPoints Point.zero model.arrangement.size) then
                         Input (MouseMove pmapped)
                     else
                         Input MouseLeave
 
-                updateArrangement m (ui.update mappedEvent (fst m.child))
+                updateArrangement model (ui.update mappedEvent model.childModel)
 
             | Bounds s -> 
                 let limit = arranger.limit s
-                if limit = m.available then (m, Cmd.none)
+                if limit = model.available then (model, Cmd.none)
                 else
-                    updateArrangement { m with available = s } (ui.update (Bounds limit) (fst m.child))
+                    updateArrangement { model with available = s } (ui.update (Bounds limit) model.childModel)
             
             | _ -> 
-                updateArrangement m (ui.update e (fst m.child))
+                updateArrangement model (ui.update event model.childModel)
   }
 
 let onsize (update: Point -> InterfaceModify<'e, 'm>) ui =
