@@ -23,8 +23,21 @@ let style = new Style();
 //  - control.ClearValue(TextBox.BorderBrushProperty)
 
 module View =
+    let processEvent context e = printf "event: %O\n" e
+
+    type Cmd<'Msg> = class end
+
+    // Placeholder for some type that encapsulates things like the event processor and resource 
+    // cache.
+    type Context () = 
+        member this.update msg = ()
+
     type Brush =
         | Solid of Color
+
+        member view.create context =
+            match view with
+            | Solid c -> SolidColorBrush(c)
 
     type Font =
       { family: FontFamily option
@@ -33,26 +46,46 @@ module View =
         style: FontStyle option
         weight: FontWeight option }
 
-    type Control<'Msg> = interface end
+    type Control<'Msg> = 
+        abstract member create: Context -> obj
+        //abstract member update: obj -> Context -> obj
 
     type Empty<'Msg> = | Empty
-        with interface Control<'Msg>
+        with 
+            interface Control<'Msg> with
+                member view.create context = null
+                //member view.update view' context = null
 
     type Rectangle<'Msg> =
       { width: float
         height: float
         stroke: Brush option
-        fill: Brush option
-      }
-      interface Control<'Msg>
+        fill: Brush option }
+        interface Control<'Msg> with
+            member view.create context =
+                let control = Rectangle(Width = view.width, Height = view.height)
+                view.stroke |> Option.iter (fun x -> control.Stroke <- x.create context)
+                view.fill |> Option.iter (fun x -> control.Fill <- x.create context)
+                control :> obj
 
     type Button<'Msg> =
       { width: float
         height: float
         content: Control<'Msg>
-        onclick: (RoutedEvent -> 'Msg) option
-      }
-      interface Control<'Msg>
+        onclick: (RoutedEventArgs -> 'Msg) option }
+        
+        interface Control<'Msg> with
+            member view.create context =
+                let control = 
+                    Button( 
+                        Width = view.width, 
+                        Height = view.height, 
+                        Content = view.content.create context)
+
+                view.onclick |> Option.iter (fun tagger -> 
+                    control.Click.Add (fun e -> 
+                        processEvent context (tagger e) ))
+                control :> obj
 
     type TextBlock<'Msg> =
       { text: string
@@ -60,7 +93,45 @@ module View =
         background: Brush option
         font: Font option }
 
+        interface Control<'Msg> with
+            member view.create context =
+                let control = TextBlock(Text = view.text)
+
+                view.font |> Option.iter (fun font -> 
+                    control.FontSize <- font.size
+                    font.family |> Option.iter (fun x -> control.FontFamily <- x)
+                    font.stretch |> Option.iter (fun x -> control.FontStretch <- x)
+                    font.style |> Option.iter (fun x -> control.FontStyle <- x)
+                    font.weight |> Option.iter (fun x -> control.FontWeight <- x))
+
+                // This generates a brush object every time it is used, but we could try to reuse.
+                view.foreground |> Option.iter (fun x -> control.Foreground <- x.create context)
+                view.background |> Option.iter (fun x -> control.Background <- x.create context)
+
+                control :> obj
+
+    type Window<'Msg> =
+      { width: float
+        height: float
+        content: Control<'Msg> }
+
+        interface Control<'Msg> with
+            member view.create context =
+                let w = 
+                    Window
+                      ( Width = view.width, 
+                        Height = view.height,
+                        Content = view.content.create context )
+
+                w :> obj
+
+            
     type ui =
+        static member window (?width, ?height, ?content) =
+          { width = defaultArg width nan
+            height = defaultArg height nan
+            content = defaultArg content (Empty :> Control<_>) }
+
         static member button (?width, ?height, ?onclick, ?content) =
           { width = defaultArg width nan
             height = defaultArg height nan
@@ -79,21 +150,28 @@ module View =
             foreground = foreground
             background = background }
 
+    let run init update view =
+        let context = Context()
+        let app = new Application()
+        let w = (window :> Control<_>).create context
+        app.Run((w :?> Window))
+
+    type App<'Msg, 'Model> (init: 'Model, update: 'Msg -> 'Model -> ('Model * Cmd<'Msg>), view: ('Model -> Control<'Msg>)) =
+        
+
+open View
+
 [<EntryPoint>]
 [<STAThread>]
 let main argv = 
     
-    let app = new Application()
+    let window = 
+        ui.window (
+            width = 200.0, height = 200.0,
+            content = ui.button (
+                onclick = (fun _ -> 123),
+                content = ui.text ("button") 
+                )
+            )
 
-    let button = new Button();
-    button.VerticalAlignment <- VerticalAlignment.Top
-    button.HorizontalAlignment <- HorizontalAlignment.Left
-    button.Content <- "button"
-    button.Click.Add <| fun e -> printf "%O\n" button.Template
-
-    let window = new Window()
-    window.Width <- 200.0
-    window.Height <- 200.0
-    window.Content <- button
-    app.Run(window) |> ignore
-    0
+    run window
