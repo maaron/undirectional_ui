@@ -152,3 +152,9 @@ module Set =
             override this.Combine(a,b) = Set.union a b }
 
 
+[<StructuralEquality>]
+type Foo = { a: int; run: int -> int }
+
+let f1 = { a = 123; run = fun i -> i + 1 }
+
+f1 = f1
