@@ -150,14 +150,13 @@ module View =
             foreground = foreground
             background = background }
 
-    let run init update view =
+    let run init update (view: Window<_>) =
         let context = Context()
         let app = new Application()
-        let w = (window :> Control<_>).create context
+        let w = (view :> Control<_>).create context
         app.Run((w :?> Window))
 
-    type App<'Msg, 'Model> (init: 'Model, update: 'Msg -> 'Model -> ('Model * Cmd<'Msg>), view: ('Model -> Control<'Msg>)) =
-        
+    //type App<'Msg, 'Model> (init: 'Model, update: 'Msg -> 'Model -> ('Model * Cmd<'Msg>), view: ('Model -> Control<'Msg>)) =
 
 open View
 
@@ -174,4 +173,4 @@ let main argv =
                 )
             )
 
-    run window
+    run 0 (fun i -> i + 1) window
