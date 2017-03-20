@@ -17,9 +17,15 @@ type Size =
   { width: float
     height: float }
 
+    with
+        static member zero = { width = 0.0; height = 0.0 }
+
 type Point =
   { x: float
     y: float }
+    
+    with
+        static member zero = { x = 0.0; y = 0.0 }
 
 type Rectangle =
   { topLeft: Point
@@ -40,6 +46,7 @@ type Drawing =
     | DrawEmpty
     | DrawFill of Rectangle * Brush
     | DrawRectangle of Rectangle * Stroke
+    | DrawText of string
     | DrawTransformed of Matrix3x2 * Drawing
     | DrawClipped of Matrix3x2 * Drawing
     | DrawGroup of Drawing list
@@ -53,7 +60,7 @@ let view size drawing = { size = size; drawing = drawing }
 type Mouse =
   { location: Point
     leftButton: bool
-    rightbutton: bool }
+    rightButton: bool }
 
 type UIEvent<'e> =
     | MouseEvent of Mouse
@@ -72,18 +79,28 @@ let empty() =
     commands = Observable.empty
     view = Observable.single (view { width = 0.0; height = 0.0 } DrawEmpty) }
 
+let map f ui = 
+  { input = ui.input
+    output = ui.output |> Observable.map f 
+    commands = ui.commands 
+    view = ui.view }
+
 let bindView f ui =
   { input = ui.input
     output = ui.output
     commands = ui.commands
-    view = ui.output |> Observable.map f }
+    view = ui.view |> Observable.merge (ui.output |> Observable.map f) }
 
 let chooseEvent f ui =
     let input = System.Reactive.Subjects.Subject()
+    
     let output = 
         input 
         |> Observable.choose f
         |> Observable.zip ui.output
+    
+    input.Subscribe (ui.input) |> ignore
+    
     { input = input :> System.IObserver<_>
       output = output
       commands = ui.commands
@@ -117,13 +134,23 @@ let clear brush =
     |> bindView (fun (_, size) ->
         let bounds = { topLeft = { x = 0.0; y = 0.0 }; size = size }
         view size (DrawFill (bounds, brush)))
+    |> map ignore
 
 let myui: UI<unit, unit, _> = 
     clear (Solid 123)
+    |> mouse
+    |> bindView (fun (_, m) -> 
+        view Size.zero (DrawText <| string m.location))
 
-let run ui size =
+let run ui events =
     ui.view.Subscribe (fun view -> printf "%A\n" view) |> ignore
-    ui.input.OnNext (WindowEvent size)
+    events |> List.iter (fun e ->
+        ui.input.OnNext (e))
 
-run myui { width = 200.0; height = 400.0 }
+run myui 
+  [ WindowEvent { width = 200.0; height = 400.0 }
+    MouseEvent
+      { location = { x = 1.0; y = 10.0 }
+        leftButton = false
+        rightButton = false } ]
 
