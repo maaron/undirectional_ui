@@ -23,6 +23,7 @@ type Point =
         static member square x = { x = x; y = x }
         static member add p1 p2 = { x = p1.x + p2.x; y = p1.y + p2.y }
         static member subtract p1 p2 = { x = p1.x - p2.x; y = p1.y - p2.y }
+        static member max p1 p2 = { x = max p1.x p2.x; y = max p1.y p2.y }
 
 type Rectangle =
   { topLeft: Point
@@ -72,6 +73,10 @@ type View =
           { size = newsize
             drawing = DrawTransformed (Matrix3x2.Translation (Point.square width), drawing) }
 
+        static member overlay bottom top =
+          { size = Point.max bottom.size top.size
+            drawing = DrawGroup [bottom.drawing; top.drawing] }
+
 let view size drawing = { size = size; drawing = drawing }
 
 type Mouse =
@@ -113,6 +118,7 @@ type ViewTransform =
     tview: Point -> View -> View }
 
 let selectWindow = function WindowEvent e -> Some e | _ -> None
+let selectMouse = function MouseEvent e -> Some e | _ -> None
 
 // This combinator is deceptively difficult.
 // MouseEvent -> Invert -> Forward to UI
@@ -161,11 +167,16 @@ let chooseEvent f ui =
       output = output
       view = ui.view }
 
-let mouse (ui: UI<'e, 'a>): UI<'e, 'a * Mouse> =
-    chooseEvent (function MouseEvent e -> Some e | _ -> None) ui
+let drawEvent (f: UIEvent<'e> -> View option) =
+    let input = System.Reactive.Subjects.Subject()
 
-let window (ui: UI<'e, 'a>): UI<'e, 'a * Point> =
-    chooseEvent (function WindowEvent e -> Some e | _ -> None) ui
+    let view = input |> Observable.choose f
+    let output = Observable.empty
+    { input = input; output = output; view = view }
+
+let drawMouse (f: Mouse -> View option) = drawEvent (selectMouse >> Option.bind f)
+
+let drawWindow (f: Point -> View option) = drawEvent (selectWindow >> Option.bind f)
 
 let staticView view = { empty () with view = Observable.single view }
 
@@ -184,12 +195,9 @@ let rectangle rectangle brush =
     staticView <| view bounds (DrawRectangle (rectangle, brush))
 
 let clear brush =
-    empty ()
-    |> window
-    |> bindView (fun (_, size) ->
+    drawWindow (fun size ->
         let bounds = { topLeft = { x = 0.0; y = 0.0 }; size = size }
-        view size (DrawFill (bounds, brush)))
-    |> map ignore
+        Some <| view size (DrawFill (bounds, brush)))
 
 let padded width ui =
     let tform = 
@@ -206,31 +214,46 @@ let margined width ui =
         tview = fun size view -> View.margin size width view }
     arranged tform ui
 
-let myui (): UI<unit, _> = 
-    clear (Solid 123)
-    (*
-    |> mouse
-    |> bindView (fun (_, m) -> 
-        view Size.zero (DrawText <| string m.location))
-    *)
-    |> padded 10.0
+let overlay bottom top =
+    let input = System.Reactive.Subjects.Subject()
+
+    input.Subscribe(bottom.input) |> ignore
+    input.Subscribe(top.input) |> ignore
+
+    let output = Observable.merge bottom.output top.output
+
+    let view = 
+        bottom.view
+        |> Observable.combineLatest top.view
+        |> Observable.map (fun (vb, vt) -> View.overlay vb vt)
+
+    { input = input; output = output; view = view }
 
 let run ui events =
     ui.view.Subscribe (fun view -> printf "UI event: %A\n" view) |> ignore
     events |> List.iter (fun e ->
         ui.input.OnNext (e))            
 
-run (myui ())
-  [ WindowEvent { x = 200.0; y = 400.0 }
-    (*
-    MouseEvent
-      { location = { x = 1.0; y = 10.0 }
-        leftButton = false
-        rightButton = false } *)
-        ]
-
-run (myui()) []
 run (clear (Solid 1) |> padded 5.0) [ WindowEvent { x = 200.0; y = 400.0 } ]
 run (clear (Solid 1) |> margined 5.0) [ WindowEvent { x = 200.0; y = 400.0 } ]
-View.pad 1.0 (view { x = 5.0; y = 5.0 } (DrawFill ({topLeft = Point.zero; size = { x = 5.0; y = 5.0 }}, Solid 2)))
-View.margin { x = 2.0; y = 2.0 } 1.0 (view { x = 5.0; y = 5.0 } (DrawFill ({topLeft = Point.zero; size = { x = 5.0; y = 5.0 }}, Solid 2)))
+run (clear (Solid 1) |> overlay (clear (Solid 2))) [ WindowEvent { x = 200.0; y = 400.0 } ]
+
+run (clear (Solid 1) |> overlay (clear (Solid 2))) 
+  [ WindowEvent { x = 200.0; y = 400.0 } 
+    MouseEvent 
+      { location = 
+          { x = 12.0
+            y = 21.0 }
+        leftButton = false
+        rightButton = false }
+  ]
+
+run (clear (Solid 1) |> overlay (drawMouse (fun m -> Some <| view Point.zero (DrawText (sprintf "(%f, %f)" m.location.x m.location.y))))) 
+  [ WindowEvent { x = 200.0; y = 400.0 } 
+    MouseEvent 
+      { location = 
+          { x = 12.0
+            y = 21.0 }
+        leftButton = false
+        rightButton = false }
+  ]
