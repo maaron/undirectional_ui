@@ -1,6 +1,5 @@
 ﻿module Overlayed
 
-open System
 open SharpDX
 open SharpDX.Direct2D1
 open SharpDX.Direct3D
@@ -11,7 +10,8 @@ open SharpDX.Windows
 open Ui
 open Cmd
 open Geometry
-open Draw.Drawing
+open Drawing
+open View
 
 type Event<'b, 't> =
   | Bottom of 'b
@@ -22,7 +22,7 @@ type Model<'m1, 'm2> =
     available: Point
     bottom: 'm1
     top: 'm2
-    bottomDrawing: Drawing
+    bottomDrawing: View
     }
 
 let overlayed (top: Ui<'e2, 'm2>) (bottom: Ui<'e1, 'm1>): Ui<Event<'e1, 'e2>, Model<'m1, 'm2>> =
@@ -43,13 +43,9 @@ let overlayed (top: Ui<'e2, 'm2>) (bottom: Ui<'e1, 'm1>): Ui<Event<'e1, 'e2>, Mo
         fun model ->
             {
                 size = model.bottomDrawing.size
-                clip = None
-                transform = Matrix3x2.Identity
-                commands = 
-                    [
-                    Drawing (bottom.view model.bottom)
-                    Drawing model.bottomDrawing
-                    ]
+                drawing = Drawings
+                  [ model.bottomDrawing.drawing
+                    (top.view model.top).drawing ]
             }
 
     update = 

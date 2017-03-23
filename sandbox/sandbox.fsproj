@@ -5,14 +5,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>809566c0-5ace-4d3a-a826-db909dfc7a57</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>FSharpSharpDX</RootNamespace>
-    <AssemblyName>FSharpSharpDX</AssemblyName>
+    <ProjectGuid>bd14fb13-dfad-4eb2-893c-610ebca6afa0</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>sandbox</RootNamespace>
+    <AssemblyName>sandbox</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>FSharpSharpDX</Name>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Name>sandbox</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -22,9 +22,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\FSharpSharpDX.XML</DocumentationFile>
-    <Prefer32Bit>true</Prefer32Bit>
+    <DocumentationFile>bin\Debug\sandbox.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -33,9 +31,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\FSharpSharpDX.XML</DocumentationFile>
-    <Prefer32Bit>true</Prefer32Bit>
+    <DocumentationFile>bin\Release\sandbox.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -54,27 +50,16 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
-    <None Include="App.config" />
-    <Content Include="packages.config" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Geometry.fs" />
-    <Compile Include="Drawing.fs" />
-    <Compile Include="View.fs" />
+    <Compile Include="Primitive.fs" />
+    <Compile Include="Draw.fs" />
     <Compile Include="Cmd.fs" />
-    <Compile Include="Ui.fs" />
+    <Compile Include="Library1.fs" />
     <Compile Include="Rectangle.fs" />
-    <Compile Include="Arranged.fs" />
-    <Compile Include="Mapped.fs" />
-    <Compile Include="Padded.fs" />
-    <Compile Include="Translated.fs" />
-    <Compile Include="Overlayed.fs" />
-    <Compile Include="Augmented.fs" />
-    <Compile Include="Mouseover.fs" />
-    <Compile Include="Bordered.fs" />
-    <None Include="Virtualized.fs" />
-    <None Include="Stacked.fs" />
-    <None Include="Reduced.fs" />
-    <Compile Include="Program.fs" />
+    <None Include="internalstate.fsx" />
+    <Content Include="packages.config" />
+    <None Include="reactive.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
@@ -82,27 +67,27 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="SharpDX">
-      <HintPath>..\packages\SharpDX.3.0.2\lib\net45\SharpDX.dll</HintPath>
+      <HintPath>..\packages\SharpDX.3.1.1\lib\net45\SharpDX.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="SharpDX.Desktop">
-      <HintPath>..\packages\SharpDX.Desktop.3.0.2\lib\net45\SharpDX.Desktop.dll</HintPath>
+      <HintPath>..\packages\SharpDX.Desktop.3.1.1\lib\net45\SharpDX.Desktop.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="SharpDX.Direct2D1">
-      <HintPath>..\packages\SharpDX.Direct2D1.3.0.2\lib\net45\SharpDX.Direct2D1.dll</HintPath>
+      <HintPath>..\packages\SharpDX.Direct2D1.3.1.1\lib\net45\SharpDX.Direct2D1.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="SharpDX.Direct3D11">
-      <HintPath>..\packages\SharpDX.Direct3D11.3.0.2\lib\net45\SharpDX.Direct3D11.dll</HintPath>
+      <HintPath>..\packages\SharpDX.Direct3D11.3.1.1\lib\net45\SharpDX.Direct3D11.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="SharpDX.DXGI">
-      <HintPath>..\packages\SharpDX.DXGI.3.0.2\lib\net45\SharpDX.DXGI.dll</HintPath>
+      <HintPath>..\packages\SharpDX.DXGI.3.1.1\lib\net45\SharpDX.DXGI.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="SharpDX.Mathematics">
-      <HintPath>..\packages\SharpDX.Mathematics.3.0.2\lib\net45\SharpDX.Mathematics.dll</HintPath>
+      <HintPath>..\packages\SharpDX.Mathematics.3.1.1\lib\net45\SharpDX.Mathematics.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />

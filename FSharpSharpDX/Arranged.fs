@@ -1,13 +1,11 @@
 ﻿module Arranged
 
-open System
-
 open Ui
 open Cmd
 open SharpDX
 open Geometry
-open Draw.Drawing
-open Draw.Primitive
+open Drawing
+open View
 
 // This type is used to render arranged UI's, as well as map input coordinates to the arranged 
 // UI's transformed coordinate space.
@@ -94,7 +92,7 @@ type Model<'m> = {
     available: Point
     arrangement: Arrangement
     childModel: 'm
-    childDrawing: Drawing
+    childDrawing: View
 }
 
 let arranged (arranger: Layout) (ui: Ui<'e, 'm>): Ui<'e, Model<'m>> = 
@@ -119,9 +117,12 @@ let arranged (arranger: Layout) (ui: Ui<'e, 'm>): Ui<'e, Model<'m>> =
         fun model -> 
             {
                 size = model.arrangement.size
-                clip = model.arrangement.clip
-                transform = model.arrangement.transform
-                commands = [Command.Drawing model.childDrawing]
+                drawing = 
+                    model.childDrawing.drawing
+                    |> match model.arrangement.clip with
+                       | Some c -> clipped c
+                       | None -> id
+                    |> transformed model.arrangement.transform
             }
 
     update =
@@ -146,7 +147,7 @@ let arranged (arranger: Layout) (ui: Ui<'e, 'm>): Ui<'e, Model<'m>> =
                     | None -> false
                 
                 let mappedEvent =
-                    if isClipped && 
+                    if not isClipped && 
                        Rectangle.containsPoint pmapped (Rectangle.fromPoints Point.zero model.arrangement.size) then
                         Input (MouseMove pmapped)
                     else

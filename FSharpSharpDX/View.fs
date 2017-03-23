@@ -1,6 +1,6 @@
-﻿module Draw.Drawing
+﻿module View
 
-open System
+//open System
 open System.Collections.Generic
 open SharpDX
 open SharpDX.Direct2D1
@@ -8,18 +8,23 @@ open SharpDX.Mathematics
 open SharpDX.Mathematics.Interop
 open SharpDX.Windows
 open Geometry
-open Draw.Primitive
+open Drawing
 
-type Drawing = {
+type View = {
     size: Point
-    clip: Rectangle option
-    transform: Matrix3x2
-    commands: Command list
+    drawing: Drawing
 }
-and Command =
-    | RectangleFill of RectangleFill
-    | RectangleStroke of RectangleStroke
-    | Drawing of Drawing
+
+let clip drawing =
+    let rec commandClip = function
+        | Clipped (rect, _) -> Some rect
+        | Transformed (matrix, cmd) -> 
+            commandClip cmd |> Option.map (Rectangle.transformBounds matrix)
+        | _ -> None
+
+    match commandClip drawing.drawing with
+    | Some r -> r
+    | None -> Rectangle.fromPoints Point.zero drawing.size
 
 type Resource =
     | Brush of Brush
@@ -64,7 +69,7 @@ type ResourceCache() =
                             LinearGradientBrushProperties(
                                 StartPoint = RawVector2(linear.start.x, linear.start.y),
                                 EndPoint = RawVector2(linear.stop.x, linear.stop.y)),
-                            Nullable(
+                            System.Nullable(
                                 BrushProperties(
                                     Opacity = linear.opacity,
                                     Transform = Matrix3x2.op_Implicit(linear.transform))),
@@ -100,54 +105,55 @@ type ResourceCache() =
             for s in strokeStyles.Values do s.Dispose()
             strokeStyles.Clear()
 
-let rec render (target: RenderTarget) (cache: ResourceCache) drawing =
-    let originalTransform = target.Transform
+let rec renderCommand (target: RenderTarget) (cache: ResourceCache) command =
+    match command with
+    | RectangleFill r -> 
+        target.FillRectangle(
+            RawRectangleF(
+                r.geometry.topLeft.x,
+                r.geometry.topLeft.y,
+                r.geometry.bottomRight.x,
+                r.geometry.bottomRight.y),
+            cache.getBrush target r.brush)
 
-    target.Transform <- 
-        Matrix3x2.op_Implicit(
-            Matrix3x2.Multiply(
-                Matrix3x2.op_Implicit(originalTransform), 
-                drawing.transform))
-    
-    drawing.clip 
-    |> Option.map 
-        (fun clip -> 
-            target.PushAxisAlignedClip(
-                RawRectangleF(
-                    clip.topLeft.x, clip.topLeft.y, 
-                    clip.bottomRight.x, clip.bottomRight.y),
-                AntialiasMode.Aliased)
-        )
-    |> ignore
-    
-    for cmd in drawing.commands do
-        match cmd with
-        | RectangleFill r -> 
-            target.FillRectangle(
-                RawRectangleF(
-                    r.geometry.topLeft.x,
-                    r.geometry.topLeft.y,
-                    r.geometry.bottomRight.x,
-                    r.geometry.bottomRight.y),
-                cache.getBrush target r.brush)
+    | RectangleStroke r -> 
+        target.DrawRectangle(
+            RawRectangleF(
+                r.geometry.topLeft.x,
+                r.geometry.topLeft.y,
+                r.geometry.bottomRight.x,
+                r.geometry.bottomRight.y),
+            cache.getBrush target r.stroke.brush,
+            r.stroke.width,
+            match r.stroke.style with
+            | Some s -> cache.getStrokeStyle target.Factory s
+            | None -> null)
 
-        | RectangleStroke r -> 
-            target.DrawRectangle(
-                RawRectangleF(
-                    r.geometry.topLeft.x,
-                    r.geometry.topLeft.y,
-                    r.geometry.bottomRight.x,
-                    r.geometry.bottomRight.y),
-                cache.getBrush target r.stroke.brush,
-                r.stroke.width,
-                match r.stroke.style with
-                | Some s -> cache.getStrokeStyle target.Factory s
-                | None -> null)
+    | Clipped (rect, d) ->
+        target.PushAxisAlignedClip(
+            RawRectangleF(
+                rect.topLeft.x, rect.topLeft.y, 
+                rect.bottomRight.x, rect.bottomRight.y),
+            AntialiasMode.Aliased)
 
-        | Drawing d -> render target cache d
+        renderCommand target cache d
 
-    drawing.clip 
-    |> Option.map (fun _ -> target.PopAxisAlignedClip()) 
-    |> ignore
+        target.PopAxisAlignedClip()
 
-    target.Transform <- originalTransform    
+    | Transformed (matrix, d) ->
+        let originalTransform = target.Transform
+
+        target.Transform <- 
+            Matrix3x2.op_Implicit(
+                Matrix3x2.Multiply(
+                    Matrix3x2.op_Implicit(originalTransform), 
+                    matrix))
+
+        renderCommand target cache d
+
+        target.Transform <- originalTransform
+
+    | Drawings cmds ->
+        cmds |> List.iter (renderCommand target cache)
+
+let render target cache drawing = renderCommand target cache drawing.drawing

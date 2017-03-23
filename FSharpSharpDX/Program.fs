@@ -19,7 +19,7 @@ open Padded
 open Overlayed
 open Mouseover
 open Bordered
-open Draw.Primitive
+open global.Drawing
 open Rectangle
 (*
 open Stacked
@@ -35,7 +35,7 @@ type MainForm<'e, 'm>(ui: Ui<'e, 'm>) =
     let (model, cmd) = ui.init
     let mutable state = model
     let mutable view = ui.view model
-    let resourceCache = Draw.Drawing.ResourceCache()
+    let resourceCache = View.ResourceCache()
 
     member this.update event =
         let (newState, cmd) = ui.update event state
@@ -54,8 +54,8 @@ type MainForm<'e, 'm>(ui: Ui<'e, 'm>) =
         *)
 
         rt.BeginDraw()
-        rt.Clear(Nullable<RawColor4>(Color.op_Implicit(Color.Black)))
-        Draw.Drawing.render rt resourceCache view
+        rt.Clear(SharpDX.Color.op_Implicit(SharpDX.Color.Black))
+        View.render rt resourceCache view
         
         try
             rt.EndDraw()
@@ -150,9 +150,13 @@ let colorBordered color ui =
     bordered [ Width 5.0f; Brush (Solid color) ] ui
     
 let app = 
+    (*
     rectangle 
         [ Fill (Solid Color.Green)
-          Size { x= 200.0f; y = 200.0f } ]
+          Size { x= 20.0f; y = 20.0f } ]
+    |> overlayed 
+    *)
+    mouseoverGreenBox
     |> bordered [ Width 5.0f; Brush (Solid Color.Beige) ]
 
 type Foo() =

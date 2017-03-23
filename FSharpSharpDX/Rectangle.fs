@@ -4,8 +4,8 @@ open SharpDX
 open Ui
 open Cmd
 open Geometry
-open Draw.Drawing
-open Draw.Primitive
+open Drawing
+open View
 
 type Event =
     | TopLeft of Point
@@ -26,9 +26,7 @@ let rectangleDefault =
         fun model ->
             {
             size = model.geometry.bottomRight
-            clip = None
-            transform = Matrix3x2.Identity
-            commands = [RectangleFill model]
+            drawing = RectangleFill model
             }
 
     update =

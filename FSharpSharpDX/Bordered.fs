@@ -1,6 +1,5 @@
 ﻿module Bordered
 
-open System
 open SharpDX
 open SharpDX.Direct2D1
 open SharpDX.Direct3D
@@ -8,8 +7,8 @@ open SharpDX.Mathematics
 open SharpDX.Mathematics.Interop
 open SharpDX.Windows
 
-open Draw.Primitive
-open Draw.Drawing
+open Drawing
+open View
 open Ui
 open Cmd
 open Overlayed
@@ -61,7 +60,6 @@ type Model<'e, 'm> = {
     stroke: Stroke
     subUi: Ui<'e, 'm>
     subModel: 'm
-    subDrawing: Drawing
 }
 
 let borderedDefault ui =
@@ -79,40 +77,33 @@ let borderedDefault ui =
                     }
                 subUi = arrangedUi
                 subModel = sub
-                subDrawing = arrangedUi.view sub
             }
         (model, Cmd.map Content cmd)
 
     view =
-        fun { stroke = stroke; subUi = subUi; subDrawing = subDrawing } ->
-            let width = stroke.width
+        fun m ->
+            let drawing = m.subUi.view m.subModel
+            let width = m.stroke.width
             let doubleWidth = width + 2.0f
             let halfWidth = width / 2.0f
             { 
-                size = subDrawing.size
-                clip = None
-                transform = Matrix3x2.Identity
-                commands = 
-                    [
-                    Drawing subDrawing
+                size = drawing.size
+                drawing = Drawings
+                  [ drawing.drawing
                     RectangleStroke 
-                        {
-                        geometry = 
-                            {
-                                topLeft = { x = halfWidth; y = halfWidth }
-                                bottomRight = { x = subDrawing.size.x - halfWidth; y = subDrawing.size.y - halfWidth }
-                            }
-                        stroke = stroke
-                        }
-                    ]
+                      { geometry = 
+                          {  topLeft = { x = halfWidth; y = halfWidth }
+                             bottomRight = 
+                               { x = drawing.size.x - halfWidth
+                                 y = drawing.size.y - halfWidth } }
+                        stroke = m.stroke } ]
             }
 
     update =
         fun event model ->
             let updateSub event model =
                 let (subModel2, cmd) = model.subUi.update event model.subModel
-                let subDrawing2 = model.subUi.view subModel2
-                ({ model with subModel = subModel2; subDrawing = subDrawing2 }, Cmd.map Content cmd)
+                ({ model with subModel = subModel2 }, Cmd.map Content cmd)
 
             match event with
             | Event (Width w) -> ({ model with stroke = { model.stroke with width = w }; subUi = padded w ui }, Cmd.none)

@@ -2,8 +2,6 @@
 
 open Microsoft.VisualStudio.TestTools.UnitTesting
 open SharpDX
-open Draw.Primitive
-open Draw.Drawing
 open Geometry
 
 [<TestClass>]
