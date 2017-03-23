@@ -57,7 +57,7 @@ type Drawing =
     | DrawRectangle of Rectangle * Stroke
     | DrawText of string
     | DrawTransformed of Matrix3x2 * Drawing
-    | DrawClipped of Matrix3x2 * Drawing
+    | DrawClipped of Rectangle * Drawing
     | DrawGroup of Drawing list
 
 type View =
@@ -262,3 +262,69 @@ run (clear (Solid 1) |> overlay (drawMouse (mouseString >> label >> Some)))
     - Integration with WPF and/or Windows Forms
     - Timing/animation
 *)
+
+module Windows =
+    let rectangle r = 
+        System.Drawing.RectangleF(
+                        System.Drawing.PointF(
+                            float32 r.topLeft.x, 
+                            float32 r.topLeft.y), 
+                        System.Drawing.SizeF(
+                            float32 r.size.x, 
+                            float32 r.size.y))
+
+    let color (c: Color) = System.Drawing.Color.FromArgb(c)
+
+    let brush b =
+        match b with
+        | Solid c -> new System.Drawing.SolidBrush(color c)
+
+    let matrix m =
+        new System.Drawing.Drawing2D.Matrix(
+            float32 m.M11, 
+            float32 m.M12, 
+            float32 m.M21, 
+            float32 m.M22, 
+            float32 m.M31, 
+            float32 m.M32)
+
+    let rec render (graphics: System.Drawing.Graphics) view =
+        match view with
+        | DrawEmpty -> ()
+        | DrawClipped (clip, drawing) ->
+            let old = graphics.Clip
+
+            use region = 
+                new System.Drawing.Region(rectangle clip)
+
+            graphics.Clip <- region
+            render graphics drawing
+            graphics.Clip <- old
+
+        | DrawFill (r, b) ->
+            use br = brush b
+            graphics.FillRectangle(br, rectangle r)
+
+        | DrawGroup drawings -> List.iter (render graphics) drawings
+
+        | DrawRectangle (r, s) ->
+            use b = brush s.brush
+            use pen = new System.Drawing.Pen(b, float32 s.thickness)
+            graphics.DrawRectangle(
+                pen, 
+                float32 r.topLeft.x, 
+                float32 r.topLeft.y, 
+                float32 r.size.x, 
+                float32 r.size.y)
+
+        | DrawText s -> 
+            use b = new System.Drawing.SolidBrush(System.Drawing.Color.Black)
+            use f = new System.Drawing.Font(System.Drawing.FontFamily.GenericMonospace, 10.0f)
+            graphics.DrawString(s, f, b, 0.0f, 0.0f)
+
+        | DrawTransformed (transform, drawing) ->
+            let old = graphics.Transform
+            use m = matrix transform
+            graphics.Transform <- m
+            render graphics drawing
+            graphics.Transform <- old
