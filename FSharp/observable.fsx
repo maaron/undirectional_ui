@@ -4,6 +4,7 @@
 #r "System.Core.dll"
 #r "System.dll"
 #r "System.Numerics.dll"
+#r "WindowsBase.dll"
 #r "../packages/System.Reactive.Core.3.0.0/lib/net45/System.Reactive.Core.dll"
 #r "../packages/System.Reactive.Interfaces.3.0.0/lib/net45/System.Reactive.Interfaces.dll"
 #r "../packages/System.Reactive.Linq.3.0.0/lib/net45/System.Reactive.Linq.dll"
@@ -266,12 +267,12 @@ run (clear (Solid 1) |> overlay (drawMouse (mouseString >> label >> Some)))
 module Windows =
     let rectangle r = 
         System.Drawing.RectangleF(
-                        System.Drawing.PointF(
-                            float32 r.topLeft.x, 
-                            float32 r.topLeft.y), 
-                        System.Drawing.SizeF(
-                            float32 r.size.x, 
-                            float32 r.size.y))
+            System.Drawing.PointF(
+                float32 r.topLeft.x, 
+                float32 r.topLeft.y), 
+            System.Drawing.SizeF(
+                float32 r.size.x, 
+                float32 r.size.y))
 
     let color (c: Color) = System.Drawing.Color.FromArgb(c)
 
@@ -328,3 +329,37 @@ module Windows =
             graphics.Transform <- m
             render graphics drawing
             graphics.Transform <- old
+
+type UiControl =
+    inherit System.Windows.Control with
+        override this.OnRender
+
+let application = ref null
+
+let wh = new System.Threading.ManualResetEvent(false)
+
+let runApp () =
+    try
+        let app = System.Windows.Application()
+        application := app
+        wh.Set () |> ignore
+        app.ShutdownMode <- System.Windows.ShutdownMode.OnExplicitShutdown
+        printf "Running app\n"
+        app.Run() |> ignore
+        printf "App ended\n"
+    with
+    | _ as e -> printf "%O" e
+
+let thread = System.Threading.Thread (runApp)
+thread.IsBackground <- true
+thread.SetApartmentState System.Threading.ApartmentState.STA
+thread.Start()
+wh.WaitOne() |> ignore
+
+let post f =
+    application.Value.Dispatcher.Invoke(System.Action< >(f))
+
+post (fun () -> 
+    printf "Creating window\n"
+    (new System.Windows.Window()).Show())
+
