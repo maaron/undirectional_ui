@@ -330,10 +330,6 @@ module Windows =
             render graphics drawing
             graphics.Transform <- old
 
-type UiControl =
-    inherit System.Windows.Control with
-        override this.OnRender
-
 let application = ref null
 
 let wh = new System.Threading.ManualResetEvent(false)

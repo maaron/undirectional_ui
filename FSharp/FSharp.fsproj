@@ -63,6 +63,7 @@
     <Content Include="packages.config" />
     <None Include="Scripts\load-references-debug.fsx" />
     <None Include="Scripts\load-project-debug.fsx" />
+    <None Include="observable_io.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharp.Control.Reactive">
