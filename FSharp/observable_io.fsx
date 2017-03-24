@@ -33,22 +33,22 @@ let empty () =
     (Subject() :> ISubject<_>, Observable.empty)
 
 let retn a = 
-    (Subject() :> ISubject<_>, 
-     Observable.single a |> Observable.iter (fun i -> printf "single %A\n" i))
+    (Subject() :> ISubject<_>, Observable.single a)
 
 module Observable =
-    let apply' f io = Observable.combineLatest f io |> Observable.map (fun (a, b) -> a b)
+    /// Just like combineLatest, but takes a 2-arg function to merge the latest values from each 
+    /// stream into a single-valued stream.
+    let applyLatest f io = Observable.combineLatest f io |> Observable.map (fun (a, b) -> a b)
 
 let apply (st1: ST<'i, 'a -> 'b>) (st2: ST<'i, 'a>) =
     let (i1, o1) = st1
     let (i2, o2) = st2
 
-    // This is the bug here: Instead of calling Subscribe (which causes the underlying observable 
-    // to immediately feed values), we want to create a new ISubject that just feeds both 
-    // original inputs.
     i2.Subscribe(i1) |> ignore
 
-    (i2, Observable.apply' o1 o2)
+    // This is confusing, but don't be tempted to use Observable.apply here.  I don't quite yet 
+    // completely understand the difference.
+    (i2, Observable.applyLatest o1 o2)
 
 let inline (<*>) a b = apply a b
 
