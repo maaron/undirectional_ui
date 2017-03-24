@@ -36,6 +36,9 @@ let retn a =
     (Subject() :> ISubject<_>, 
      Observable.single a |> Observable.iter (fun i -> printf "single %A\n" i))
 
+module Observable =
+    let apply' f io = Observable.combineLatest f io |> Observable.map (fun (a, b) -> a b)
+
 let apply (st1: ST<'i, 'a -> 'b>) (st2: ST<'i, 'a>) =
     let (i1, o1) = st1
     let (i2, o2) = st2
@@ -45,7 +48,7 @@ let apply (st1: ST<'i, 'a -> 'b>) (st2: ST<'i, 'a>) =
     // original inputs.
     i2.Subscribe(i1) |> ignore
 
-    (i2, Observable.apply o1 o2)
+    (i2, Observable.apply' o1 o2)
 
 let inline (<*>) a b = apply a b
 
@@ -214,23 +217,27 @@ let mouseString m =
     | Some { location = { x = x; y = y } } -> sprintf "(%f, %f)" x y
     | None -> "no mouse"
 
-let temp = Observable.apply (Observable.apply (Observable.single (fun a b -> a,b)) (Observable.range 0 3)) (Observable.range 10 3)
+let temp = Observable.apply (Observable.apply (Observable.single (fun a b -> a,b)) (Observable.range 0 1)) (Observable.range 10 1)
 temp.Subscribe(printf "%A\n")
 
 let a = arr ((+) 1)
 let b = arr ((*) 2)
 let c = retn (fun a b -> a,b) <*> a
-let (i, o) = c <*> b
+let d = apply c b
 
-(snd a).Subscribe(printf "a: %A\n")
-(snd b).Subscribe(printf "b: %A\n")
-(snd c).Subscribe(printf "c: %A\n")
-o.Subscribe(printf "d: %A\n")
-i.OnNext(1)
-i.OnNext(2)
-i.OnNext(3)
-i.OnNext(4)
-i.OnNext(5)
+(fst a).Subscribe(printf "ai: %A\n")
+(fst b).Subscribe(printf "bi: %A\n")
+(fst c).Subscribe(printf "ci: %A\n")
+(fst d).Subscribe(printf "di: %A\n")
+(snd a).Subscribe(printf "ao: %A\n")
+(snd b).Subscribe(printf "bo: %A\n")
+(snd c).Subscribe(printf "co: %A\n")
+(snd d).Subscribe(printf "do: %A\n")
+(fst d).OnNext(1)
+(fst d).OnNext(2)
+(fst d).OnNext(3)
+(fst d).OnNext(4)
+(fst d).OnNext(5)
 
 let ui = (retn (fun a b -> a)) <*> (clear (Solid 1)) <*> (clear (Solid 2))
 run (ui)
