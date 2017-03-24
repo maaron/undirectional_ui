@@ -16,6 +16,7 @@ output type parameters instead of a separate output and view "output".
 open System
 open FSharp.Control.Reactive
 open System.Reactive.Subjects
+open System.Reactive.Subjects
 
 module Tuple =
     let mapSnd f (a, b) = (a, f b)
@@ -29,10 +30,31 @@ module Tuple =
 type ST<'i, 'o> = ISubject<'i> * IObservable<'o>
 
 let empty () =
-    (System.Reactive.Subjects.Subject() :> ISubject<_>, Observable.empty)
+    (Subject() :> ISubject<_>, Observable.empty)
+
+let retn a = 
+    (Subject() :> ISubject<_>, Observable.single a)
+
+let apply (st1: ST<'i, 'a -> 'b>) (st2: ST<'i, 'a>) =
+    let (i1, o1) = st1
+    let (i2, o2) = st2
+
+    i2.Subscribe(i1) |> ignore
+
+    (i2, Observable.apply o1 o2)
+
+let inline (<*>) a b = apply a b
 
 let map f (i, o) =
     (i, o |> Observable.map f)
+
+let lmap f (st: ST<'i, 'o>) =
+    let (i, o) = st
+    let i' = System.Reactive.Subjects.Subject() :> ISubject<_>
+    (i' |> Observable.map f).Subscribe(i) |> ignore
+    (i', o)
+
+let dimap fl fr = lmap fl >> map fr
 
 let arr f =
     let input = System.Reactive.Subjects.Subject() :> ISubject<_>
@@ -127,6 +149,8 @@ type View =
           { size = Point.max bottom.size top.size
             drawing = DrawGroup [bottom.drawing; top.drawing] }
 
+let view size drawing = { size = size; drawing = drawing }
+
 // A View that is dependent on another view
 type ViewT = ST<View, View>
 
@@ -156,4 +180,41 @@ let window (user: UserT<'a>): UserT<'a * Point> =
     |> dupInput 
     |> choose (Tuple.chooseSnd (function WindowEvent e -> Some e | _ -> None))
 
-    
+let run (ui: UserT<View>) events =
+    let (i, o) = ui
+    o.Subscribe (fun view -> printf "UI event: %A\n" view) |> ignore
+    events |> List.iter (fun e ->
+        i.OnNext (e))
+
+let chooseWindow = function WindowEvent e -> Some e | _ -> None
+let chooseMouse = function MouseEvent e -> Some e | _ -> None
+
+let drawWindow (f: Point -> View option) = fromChooser (chooseWindow >> Option.bind f)
+let drawMouse (f: Mouse option -> View option) = fromChooser (chooseMouse >> Option.bind f)
+
+let label s = 
+    let size = Point.zero // TODO: Measure text size
+    view size (DrawText s)
+
+let clear brush =
+    drawWindow (fun size ->
+        let bounds = { topLeft = { x = 0.0; y = 0.0 }; size = size }
+        Some <| view size (DrawFill (bounds, brush)))
+
+let overlay (bottom: UserT<View>) (top: UserT<View>): UserT<View> =
+    retn View.overlay <*> bottom <*> top
+
+let mouseString m =
+    match m with
+    | Some { location = { x = x; y = y } } -> sprintf "(%f, %f)" x y
+    | None -> "no mouse"
+
+run (clear (Solid 1) |> overlay (drawMouse (mouseString >> label >> Some))) 
+  [ WindowEvent { x = 200.0; y = 400.0 } 
+    MouseEvent <| Some
+      { location = 
+          { x = 12.0
+            y = 21.0 }
+        leftButton = false
+        rightButton = false }
+  ]    
