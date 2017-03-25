@@ -77,8 +77,8 @@ module View =
         member view.set (control: Rectangle) context =
             control.Width <- view.width
             control.Height <- view.height
-            view.stroke |> Option.iter (fun x -> control.Stroke <- x.create context)
-            view.fill |> Option.iter (fun x -> control.Fill <- x.create context)
+                view.stroke |> Option.iter (fun x -> control.Stroke <- x.create context)
+                view.fill |> Option.iter (fun x -> control.Fill <- x.create context)
             control
 
         interface Control<'Msg> with
@@ -95,7 +95,7 @@ module View =
         height: float
         content: Control<'Msg>
         onclick: (RoutedEventArgs -> 'Msg) option }
-
+        
         member view.set (control: Button) context =
             control.Width <- view.width
             control.Height <- view.height
@@ -118,9 +118,9 @@ module View =
             // significantly different than the above?  Maybe some additional locking with the 
             // event registration that we could ignore, since we assume single-threaded access to
             // the context object.
-            view.onclick |> Option.iter (fun tagger -> 
-                control.Click.Add (fun e -> 
-                    processEvent context (tagger e) ))
+                view.onclick |> Option.iter (fun tagger -> 
+                    control.Click.Add (fun e -> 
+                        processEvent context (tagger e) ))
 
             control
         
@@ -208,7 +208,7 @@ open View
 [<EntryPoint>]
 [<STAThread>]
 let main argv = 
-
+    
     let init = 1
 
     let update e s = s + e, Cmd.none

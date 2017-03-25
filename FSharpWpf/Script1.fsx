@@ -1,34 +1,54 @@
 ﻿
-#I __SOURCE_DIRECTORY__
-#r "PresentationCore.dll"
-#r "PresentationFramework.dll"
-#r "System.Core.dll"
-#r "System.dll"
-#r "System.Numerics.dll"
-#r "WindowsBase.dll"
+open System.IO
 
-open System
-open System.Windows
-open System.Windows.Input
-open System.Windows.Controls
-open System.Windows.Controls.Primitives
-
-let style = new Style();
-// Triggers, Resources, TargetType, Setters maybe aren't necessary?
-
-// This seems to be necessary to at least have "content" and "children" properties, but what 
-// methods must this have?  Another possibility is to encode all controls as union cases, but then 
-// it's not "externally" extensible.  Perhaps a method that performs update given a previous
-// ControlD value and a "live" Control?
-type ControlD = interface end
-
-type ButtonD<'Msg> =
-  { width: float
-    height: float
-    content: ControlD
-
-    click: RoutedEvent -> 'Msg
+[<CustomEquality; NoComparison>]
+type ExternalCmd<'d, 'e when 'd : equality> =
+  { data: 'd
+    run: ('e -> unit) -> unit 
   }
+
+    override x.GetHashCode () = x.data.GetHashCode()
+    
+    override x.Equals (o) =
+        match o with
+        | :? ExternalCmd<'d, 'e> as dc -> Unchecked.equals dc.data x.data
+        | _ -> false
+
+type InternalCmd<'d, 'e> = 
+  { machineId: int
+    request: 'd
+    tagger: 'd -> 'e }
+
+type Cmd<'d, 'e when 'd : equality> =
+  | Internal of InternalCmd<'d, 'e>
+  | External of ExternalCmd<'d, 'e>
+  | Batch of Cmd<'d, 'e> list
+
+let dc0 = { data = 123; run = fun k -> k 123 }
+
+printf "%A\n" dc0
+
+let b = dc0 = dc0
+
+module Cmd =
+    let create d f = { data = d; run = f }
+
+type FileCommand =
+  | Open of string
+  | Close of StreamReader
+
+let openFile path = 
+    Cmd.create (Open path) <| fun k -> k (System.IO.StreamReader (path))
+
+let closeFile stream =
+    Cmd.create (Close stream) <| fun k -> stream.Dispose() |> k
+
+openFile "C:\\asdf.txt"
+
+(* Another way is to make Cmd an interface *)
+
+type ICmd<'e> =
+    abstract member run: ('e -> unit) -> unit
 
 let button = Button()
 
