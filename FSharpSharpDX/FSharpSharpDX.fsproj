@@ -55,7 +55,6 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <None Include="App.config" />
-    <Content Include="packages.config" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Geometry.fs" />
     <Compile Include="Drawing.fs" />
@@ -75,6 +74,8 @@
     <None Include="Stacked.fs" />
     <None Include="Reduced.fs" />
     <Compile Include="Program.fs" />
+    <None Include="Scripts\load-references-debug.fsx" />
+    <None Include="Scripts\load-project-debug.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

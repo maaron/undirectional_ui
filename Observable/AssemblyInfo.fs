@@ -1,4 +1,4 @@
-﻿namespace FSharpSharpDX.UnitTests.AssemblyInfo
+﻿namespace Observable.AssemblyInfo
 
 open System.Reflection
 open System.Runtime.CompilerServices
@@ -7,12 +7,12 @@ open System.Runtime.InteropServices
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[<assembly: AssemblyTitle("FSharpSharpDX.UnitTests")>]
+[<assembly: AssemblyTitle("Observable")>]
 [<assembly: AssemblyDescription("")>]
 [<assembly: AssemblyConfiguration("")>]
 [<assembly: AssemblyCompany("")>]
-[<assembly: AssemblyProduct("FSharpSharpDX.UnitTests")>]
-[<assembly: AssemblyCopyright("Copyright ©  2016")>]
+[<assembly: AssemblyProduct("Observable")>]
+[<assembly: AssemblyCopyright("Copyright ©  2017")>]
 [<assembly: AssemblyTrademark("")>]
 [<assembly: AssemblyCulture("")>]
 
@@ -22,7 +22,7 @@ open System.Runtime.InteropServices
 [<assembly: ComVisible(false)>]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[<assembly: Guid("17648fdb-e20e-4161-8836-daf1dcacdbc7")>]
+[<assembly: Guid("873ba626-e8ac-48ee-bb6e-4aa4de5ba4a6")>]
 
 // Version information for an assembly consists of the following four values:
 // 

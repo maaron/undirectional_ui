@@ -77,8 +77,8 @@ module View =
         member view.set (control: Rectangle) context =
             control.Width <- view.width
             control.Height <- view.height
-                view.stroke |> Option.iter (fun x -> control.Stroke <- x.create context)
-                view.fill |> Option.iter (fun x -> control.Fill <- x.create context)
+            view.stroke |> Option.iter (fun x -> control.Stroke <- x.create context)
+            view.fill |> Option.iter (fun x -> control.Fill <- x.create context)
             control
 
         interface Control<'Msg> with
@@ -118,9 +118,9 @@ module View =
             // significantly different than the above?  Maybe some additional locking with the 
             // event registration that we could ignore, since we assume single-threaded access to
             // the context object.
-                view.onclick |> Option.iter (fun tagger -> 
-                    control.Click.Add (fun e -> 
-                        processEvent context (tagger e) ))
+            view.onclick |> Option.iter (fun tagger -> 
+                control.Click.Add (fun e -> 
+                    processEvent context (tagger e) ))
 
             control
         
@@ -140,6 +140,9 @@ module View =
         font: Font option }
 
         interface Control<'Msg> with
+            // TODO
+            member view.update control o context = o
+
             member view.create context =
                 let control = TextBlock(Text = view.text)
 
@@ -162,6 +165,9 @@ module View =
         content: Control<'Msg> }
 
         interface Control<'Msg> with
+            // TODO
+            member view.update control o context = o
+
             member view.create context =
                 let w = 
                     Window
