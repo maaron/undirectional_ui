@@ -1,4 +1,10 @@
 ﻿
+#r "PresentationCore.dll"
+#r "PresentationFramework.dll"
+#r "System.Core.dll"
+#r "System.dll"
+#r "System.Numerics.dll"
+#r "WindowsBase.dll"
 #r "../packages/System.Reactive.Core.3.0.0/lib/net45/System.Reactive.Core.dll"
 #r "../packages/System.Reactive.Interfaces.3.0.0/lib/net45/System.Reactive.Interfaces.dll"
 #r "../packages/System.Reactive.Linq.3.0.0/lib/net45/System.Reactive.Linq.dll"
@@ -6,14 +12,8 @@
 #r "../packages/System.Reactive.Windows.Threading.3.0.0/lib/net45/System.Reactive.Windows.Threading.dll"
 #r "../packages/FSharp.Control.Reactive.3.5.0/lib/net45/FSharp.Control.Reactive.dll"
 
-#r "../packages/SharpDX.Desktop.3.0.2/lib/net45/SharpDX.Desktop.dll"
-#r "../packages/SharpDX.Direct2D1.3.0.2/lib/net45/SharpDX.Direct2D1.dll"
-#r "../packages/SharpDX.Direct3D11.3.0.2/lib/net45/SharpDX.Direct3D11.dll"
-#r "../packages/SharpDX.3.0.2/lib/net45/SharpDX.dll"
-#r "../packages/SharpDX.DXGI.3.0.2/lib/net45/SharpDX.DXGI.dll"
-#r "../packages/SharpDX.Mathematics.3.0.2/lib/net45/SharpDX.Mathematics.dll"
-
 open FSharp.Control.Reactive
+open System.Numerics
 
 type Point =
   { x: float
@@ -58,7 +58,7 @@ type Drawing =
     | DrawRectangle of Rectangle * Stroke
     | DrawText of string
     | DrawTransformed of Matrix3x2 * Drawing
-    | DrawClipped of Matrix3x2 * Drawing
+    | DrawClipped of Rectangle * Drawing
     | DrawGroup of Drawing list
 
 type View =
@@ -264,142 +264,97 @@ run (clear (Solid 1) |> overlay (drawMouse (mouseString >> label >> Some)))
     - Timing/animation
 *)
 
-open System.Collections.Generic
-(*
-open SharpDX.Direct2D1
-open SharpDX.Mathematics
-open SharpDX.Mathematics.Interop
-open SharpDX.Windows
+module Windows =
+    let rectangle r = 
+        System.Drawing.RectangleF(
+            System.Drawing.PointF(
+                float32 r.topLeft.x, 
+                float32 r.topLeft.y), 
+            System.Drawing.SizeF(
+                float32 r.size.x, 
+                float32 r.size.y))
 
-type Resource =
-    | Brush of Brush
+    let color (c: Color) = System.Drawing.Color.FromArgb(c)
 
-type ResourceCache() =
-    let mutable solidColorBrush = None
-    
-    let linearGradientBrushes = Dictionary<float32 * Matrix3x2, SharpDX.Direct2D1.LinearGradientBrush>()
+    let brush b =
+        match b with
+        | Solid c -> new System.Drawing.SolidBrush(color c)
 
-    let gradientStopCollections = Dictionary<GradientStop list, SharpDX.Direct2D1.GradientStopCollection>()
+    let matrix m =
+        new System.Drawing.Drawing2D.Matrix(
+            float32 m.M11, 
+            float32 m.M12, 
+            float32 m.M21, 
+            float32 m.M22, 
+            float32 m.M31, 
+            float32 m.M32)
 
-    let strokeStyles = Dictionary<StrokeStyle, SharpDX.Direct2D1.StrokeStyle>()
+    let rec render (graphics: System.Drawing.Graphics) view =
+        match view with
+        | DrawEmpty -> ()
+        | DrawClipped (clip, drawing) ->
+            let old = graphics.Clip
 
-    member this.getBrush target resource =
-        match resource with
-        | Solid color ->
-            solidColorBrush <- 
-                match solidColorBrush with 
-                | Some s -> Some s 
-                | None -> Some (new SolidColorBrush(target, Color.op_Implicit(color)))
-            solidColorBrush.Value.Color <- Color.op_Implicit(color)
-            solidColorBrush.Value :> SharpDX.Direct2D1.Brush
+            use region = 
+                new System.Drawing.Region(rectangle clip)
 
-        | Linear linear ->
-            let gradientStops =
-                match gradientStopCollections.TryGetValue(linear.stops) with
-                | (true, value) -> value
-                | (false, _) ->
-                    let stops =
-                        new GradientStopCollection(
-                                target, List.toArray linear.stops)
-                    gradientStopCollections.Add(linear.stops, stops)
-                    stops
-        
-            let brush =
-                match linearGradientBrushes.TryGetValue((linear.opacity, linear.transform)) with
-                | (true, value) -> value
-                | (false, _) -> 
-                    let brush =
-                        new LinearGradientBrush(
-                            target,
-                            LinearGradientBrushProperties(
-                                StartPoint = RawVector2(linear.start.x, linear.start.y),
-                                EndPoint = RawVector2(linear.stop.x, linear.stop.y)),
-                            System.Nullable(
-                                BrushProperties(
-                                    Opacity = linear.opacity,
-                                    Transform = Matrix3x2.op_Implicit(linear.transform))),
-                            gradientStops)
-                    linearGradientBrushes.Add((linear.opacity, linear.transform), brush)
-                    brush
+            graphics.Clip <- region
+            render graphics drawing
+            graphics.Clip <- old
 
-            brush.StartPoint <- RawVector2(linear.start.x, linear.start.y)
-            brush.EndPoint <- RawVector2(linear.stop.x, linear.stop.y)
-            brush :> SharpDX.Direct2D1.Brush
+        | DrawFill (r, b) ->
+            use br = brush b
+            graphics.FillRectangle(br, rectangle r)
 
-        member this.getStrokeStyle (factory: Factory) resource =
-            match strokeStyles.TryGetValue(resource) with
-            | (true, s) -> s
-            | (false, _) ->
-                let s = new SharpDX.Direct2D1.StrokeStyle(factory, resource.properties, List.toArray resource.dashes)
-                strokeStyles.Add(resource, s)
-                s
+        | DrawGroup drawings -> List.iter (render graphics) drawings
 
-        member this.ReleaseTargetResources() =
-            solidColorBrush <-
-                match solidColorBrush with
-                | Some b -> b.Dispose(); None
-                | None -> None
+        | DrawRectangle (r, s) ->
+            use b = brush s.brush
+            use pen = new System.Drawing.Pen(b, float32 s.thickness)
+            graphics.DrawRectangle(
+                pen, 
+                float32 r.topLeft.x, 
+                float32 r.topLeft.y, 
+                float32 r.size.x, 
+                float32 r.size.y)
 
-            for linear in linearGradientBrushes.Values do linear.Dispose()
-            linearGradientBrushes.Clear()
+        | DrawText s -> 
+            use b = new System.Drawing.SolidBrush(System.Drawing.Color.Black)
+            use f = new System.Drawing.Font(System.Drawing.FontFamily.GenericMonospace, 10.0f)
+            graphics.DrawString(s, f, b, 0.0f, 0.0f)
 
-            for grad in gradientStopCollections.Values do grad.Dispose()
-            gradientStopCollections.Clear()
+        | DrawTransformed (transform, drawing) ->
+            let old = graphics.Transform
+            use m = matrix transform
+            graphics.Transform <- m
+            render graphics drawing
+            graphics.Transform <- old
 
-        member this.ReleaseFactoryResources() =
-            for s in strokeStyles.Values do s.Dispose()
-            strokeStyles.Clear()
+let application = ref null
 
-let rec renderCommand (target: RenderTarget) (cache: ResourceCache) command =
-    match command with
-    | RectangleFill r -> 
-        target.FillRectangle(
-            RawRectangleF(
-                r.geometry.topLeft.x,
-                r.geometry.topLeft.y,
-                r.geometry.bottomRight.x,
-                r.geometry.bottomRight.y),
-            cache.getBrush target r.brush)
+let wh = new System.Threading.ManualResetEvent(false)
 
-    | RectangleStroke r -> 
-        target.DrawRectangle(
-            RawRectangleF(
-                r.geometry.topLeft.x,
-                r.geometry.topLeft.y,
-                r.geometry.bottomRight.x,
-                r.geometry.bottomRight.y),
-            cache.getBrush target r.stroke.brush,
-            r.stroke.width,
-            match r.stroke.style with
-            | Some s -> cache.getStrokeStyle target.Factory s
-            | None -> null)
+let runApp () =
+    try
+        let app = System.Windows.Application()
+        application := app
+        wh.Set () |> ignore
+        app.ShutdownMode <- System.Windows.ShutdownMode.OnExplicitShutdown
+        printf "Running app\n"
+        app.Run() |> ignore
+        printf "App ended\n"
+    with
+    | _ as e -> printf "%O" e
 
-    | Clipped (rect, d) ->
-        target.PushAxisAlignedClip(
-            RawRectangleF(
-                rect.topLeft.x, rect.topLeft.y, 
-                rect.bottomRight.x, rect.bottomRight.y),
-            AntialiasMode.Aliased)
+let thread = System.Threading.Thread (runApp)
+thread.IsBackground <- true
+thread.SetApartmentState System.Threading.ApartmentState.STA
+thread.Start()
+wh.WaitOne() |> ignore
 
-        renderCommand target cache d
+let post f =
+    application.Value.Dispatcher.Invoke(System.Action< >(f))
 
-        target.PopAxisAlignedClip()
-
-    | Transformed (matrix, d) ->
-        let originalTransform = target.Transform
-
-        target.Transform <- 
-            Matrix3x2.op_Implicit(
-                Matrix3x2.Multiply(
-                    Matrix3x2.op_Implicit(originalTransform), 
-                    matrix))
-
-        renderCommand target cache d
-
-        target.Transform <- originalTransform
-
-    | Drawings cmds ->
-        cmds |> List.iter (renderCommand target cache)
-
-let render target cache drawing = renderCommand target cache drawing.drawing
-*)
+post (fun () -> 
+    printf "Creating window\n"
+    (new System.Windows.Window()).Show())
