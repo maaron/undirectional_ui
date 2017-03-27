@@ -78,6 +78,17 @@ let first (st: ST<'i, 'o>): ST<'i * 'a, 'o * 'a> =
 
     (input', output')
 
+let (>>>) (st1: ST<'a, 'b>) (st2: ST<'b, 'c>): ST<'a, 'c> =
+    let (i1, o1) = st1
+    let (i2, o2) = st2
+    
+    let o2' = System.Reactive.Linq.Observable.Create(Func<_,_>(fun obs -> 
+        o2.Subscribe(obs) |> ignore
+        o1.Subscribe(i2)
+        ))
+    
+    (i1, o2')
+
 let choose (f: 'a -> 'b option) (st: ST<'i, 'a>): ST<'i, 'b> =
     let (i, a) = st
     (i, a |> Observable.choose f)
@@ -212,32 +223,49 @@ let clear brush =
 let overlay (bottom: UserT<View>) (top: UserT<View>): UserT<View> =
     retn View.overlay <*> bottom <*> top
 
+type ViewTransform =
+  { twindow: Point -> Point
+    tmouse: Point -> Point
+    tview: Point -> View -> View }
+
+let arranged transform (user: UserT<View>): UserT<View> =
+    let user' =
+        user
+        |> lmap (function
+            | MouseEvent e -> 
+                e
+                |> Option.map (fun e -> { e with location = transform.tmouse e.location })
+                |> MouseEvent 
+            | WindowEvent e ->
+                WindowEvent (e |> transform.twindow))
+
+    let window = fromChooser chooseWindow
+
+    retn transform.tview <*> window <*> user'
+
+let padded width ui =
+    let tform = 
+      { twindow = id
+        tmouse = Point.subtract { x = width; y = width }
+        tview = fun size view -> View.pad width view }
+    arranged tform ui
+
+let margined width ui =
+    let tform = 
+      { twindow = fun size -> 
+            Point.subtract size (Point.square (width * 2.0))
+        tmouse = Point.subtract (Point.square width)
+        tview = fun size view -> View.margin size width view }
+    arranged tform ui
+
 let mouseString m =
     match m with
     | Some { location = { x = x; y = y } } -> sprintf "(%f, %f)" x y
     | None -> "no mouse"
 
-let temp = Observable.apply (Observable.apply (Observable.single (fun a b -> a,b)) (Observable.range 0 1)) (Observable.range 10 1)
-temp.Subscribe(printf "%A\n")
-
-let a = arr ((+) 1)
-let b = arr ((*) 2)
-let c = retn (fun a b -> a,b) <*> a
-let d = apply c b
-
-(fst a).Subscribe(printf "ai: %A\n")
-(fst b).Subscribe(printf "bi: %A\n")
-(fst c).Subscribe(printf "ci: %A\n")
-(fst d).Subscribe(printf "di: %A\n")
-(snd a).Subscribe(printf "ao: %A\n")
-(snd b).Subscribe(printf "bo: %A\n")
-(snd c).Subscribe(printf "co: %A\n")
-(snd d).Subscribe(printf "do: %A\n")
-(fst d).OnNext(1)
-(fst d).OnNext(2)
-(fst d).OnNext(3)
-(fst d).OnNext(4)
-(fst d).OnNext(5)
+let headered header body =
+    dupInput header
+    |> map (fun (view,size) -> { size with y = size.y - view.size.y }, view)
 
 let ui = (retn (fun a b -> a)) <*> (clear (Solid 1)) <*> (clear (Solid 2))
 run (ui)
@@ -254,4 +282,24 @@ run (clear (Solid 1) |> overlay (drawMouse (mouseString >> label >> Some)))
             y = 21.0 }
         leftButton = false
         rightButton = false }
-  ]    
+  ]
+
+run 
+  ( clear (Solid 1)
+    |> padded 5.0)
+  [ WindowEvent { x = 20.0; y = 40.0 } 
+  ]
+
+run 
+  ( clear (Solid 1)
+    |> margined 5.0)
+  [ WindowEvent { x = 20.0; y = 40.0 } 
+  ]
+
+let (i, o) = (arr ((+) 1) >>> arr ((*) 2))
+o.Subscribe(printf "output = %A\n")
+i.OnNext(1)
+i.OnNext(2)
+i.OnNext(3)
+i.OnNext(4)
+i.OnNext(5)
